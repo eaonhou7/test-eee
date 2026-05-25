@@ -14,6 +14,7 @@ Nprogress.configure({
 
 // 白名单路由
 const WHITE_LIST = ['Login', 'Init']
+const LEGACY_AMAZON_PREFIX = '/layout/amazon'
 
 function isExternalUrl(val) {
   return typeof val === 'string' && /^(https?:)?\/\//.test(val)
@@ -27,6 +28,57 @@ function normalizeAbsolutePath(p) {
 
 function normalizeRelativePath(p) {
   return String(p || '').replace(/^\/+/, '')
+}
+
+function redirectToCurrentPath(to) {
+  return {
+    path: to.path,
+    query: to.query,
+    hash: to.hash,
+    replace: true
+  }
+}
+
+function getLegacyAmazonRedirectPath(path) {
+  if (!path) {
+    return ''
+  }
+  if (path === LEGACY_AMAZON_PREFIX || path === `${LEGACY_AMAZON_PREFIX}/`) {
+    return '/layout/amazon-logistics/logisticsLibrary'
+  }
+  if (!path.startsWith(`${LEGACY_AMAZON_PREFIX}/`)) {
+    return ''
+  }
+
+  const legacyTail = path.slice(`${LEGACY_AMAZON_PREFIX}/`.length)
+  const head = legacyTail.split('/').filter(Boolean)[0]
+  if (!head) {
+    return '/layout/amazon-logistics/logisticsLibrary'
+  }
+
+  let nextRoot = ''
+  if (head.startsWith('logistics')) {
+    nextRoot = 'amazon-logistics'
+  } else if (['templateCenter', 'listingManager', 'listingSyncJobs'].includes(head)) {
+    nextRoot = 'amazon-product'
+  } else if (head === 'collectorList' || head === 'collector1688List') {
+    nextRoot = 'amazon-collection'
+  } else if (head === 'storeManager') {
+    nextRoot = 'amazon-store'
+  } else if (head === 'order' || head.startsWith('order')) {
+    nextRoot = 'amazon-order'
+  } else if (head === 'supportInbox') {
+    nextRoot = 'amazon-support'
+  } else if (head === 'return' || head.startsWith('return')) {
+    nextRoot = 'amazon-returns'
+  } else if (head.startsWith('finance')) {
+    nextRoot = 'amazon-finance'
+  }
+
+  if (!nextRoot) {
+    return ''
+  }
+  return normalizeAbsolutePath(`/layout/${nextRoot}/${legacyTail}`)
 }
 
 // 安全注册：仅在路由名未存在时注册顶级路由
@@ -160,6 +212,16 @@ router.beforeEach(async (to, from) => {
 
   Nprogress.start()
 
+  const legacyAmazonRedirect = getLegacyAmazonRedirectPath(to.path)
+  if (legacyAmazonRedirect && legacyAmazonRedirect !== to.path) {
+    return {
+      path: legacyAmazonRedirect,
+      query: to.query,
+      hash: to.hash,
+      replace: true
+    }
+  }
+
   // 处理元数据和缓存
   to.meta.matched = [...to.matched]
   await routerStore.handleKeepAlive(to)
@@ -193,7 +255,7 @@ router.beforeEach(async (to, from) => {
     // 处理异步路由
     if (!routerStore.asyncRouterFlag && !WHITE_LIST.includes(from.name)) {
       await setupRouter(userStore)
-      return to
+      return redirectToCurrentPath(to)
     }
 
     return to.matched.length ? true : { path: '/layout/404' }

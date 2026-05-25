@@ -1,0 +1,85 @@
+package amazon
+
+const (
+	financeBasisAccrual = "accrual"
+	financeBasisCash    = "cash"
+
+	financeDateViewPurchase = "purchase"
+	financeDateViewShipment = "shipment"
+
+	financeSourceOrder      = "order"
+	financeSourceSettlement = "settlement"
+	financeSourceCostBill   = "cost_bill"
+	financeSourceAds        = "ads"
+	financeSourcePayment    = "payment"
+	financeSourceReturn     = "return"
+
+	financeEntryRevenue           = "revenue"
+	financeEntryProcurement       = "procurement"
+	financeEntryFirstLeg          = "first_leg"
+	financeEntryAmazonReferralFee = "amazon_referral_fee"
+	financeEntryFBAFulfillmentFee = "fba_fulfillment_fee"
+	financeEntryStorageFee        = "storage_fee"
+	financeEntryAdCost            = "ad_cost"
+	financeEntryWithdrawalFee     = "withdrawal_fee"
+	financeEntryCardFee           = "card_fee"
+	financeEntryReturnLoss        = "return_loss"
+	financeEntryRefundCost        = "refund_cost"
+	financeEntryReimbursement     = "reimbursement"
+	financeEntryCompensation      = "compensation"
+	financeEntryReturnRecovery    = "return_recovery"
+	financeEntryLabelFee          = "label_fee"
+	financeEntryDispositionFee    = "disposition_fee"
+
+	financeMatchPending   = "pending"
+	financeMatchExact     = "exact"
+	financeMatchFuzzy     = "fuzzy"
+	financeMatchManual    = "manual"
+	financeMatchUnmatched = "unmatched"
+
+	financePaymentStatusUnpaid  = "unpaid"
+	financePaymentStatusPartial = "partial"
+	financePaymentStatusPaid    = "paid"
+
+	financeArapStatusOpen    = "open"
+	financeArapStatusPartial = "partial"
+	financeArapStatusSettled = "settled"
+
+	financeRecalcPending     = "pending"
+	financeRecalcRunning     = "running"
+	financeRecalcDone        = "done"
+	financeRecalcFailed      = "failed"
+	financeRecalcScopeOrder  = "order"
+	financeRecalcScopeGlobal = "global"
+
+	financeActualityActual    = "actual"
+	financeActualityEstimated = "estimated"
+
+	financeAllocationDirect        = "direct"
+	financeAllocationWeightedAvg   = "weighted_average"
+	financeAllocationMonthlySales  = "monthly_sales"
+	financeAllocationQuantityShare = "quantity_share"
+	financeAllocationRevenueShare  = "revenue_share"
+	financeAllocationPeriodCost    = "period_cost"
+
+	financeBillTypeProcurement  = "procurement"
+	financeBillTypeFirstLeg     = "first_leg"
+	financeBillTypeWithdrawal   = "withdrawal"
+	financeBillTypeCardFee      = "card_fee"
+	financeBillTypeManualAdjust = "manual_adjustment"
+
+	financeSettlementTypeRevenue       = "revenue"
+	financeSettlementTypeReferralFee   = "referral_fee"
+	financeSettlementTypeFBAFee        = "fba_fulfillment_fee"
+	financeSettlementTypeStorageFee    = "storage_fee"
+	financeSettlementTypeWithdrawalFee = "withdrawal_fee"
+	financeSettlementTypeRefund        = "refund"
+	financeSettlementTypeLabelFee      = "label_fee"
+	financeSettlementTypeReimbursement = "reimbursement"
+	financeSettlementTypeCompensation  = "compensation"
+	financeSettlementTypeOther         = "other"
+
+	financeGrainDay   = "day"
+	financeGrainWeek  = "week"
+	financeGrainMonth = "month"
+)

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Amazon 店铺授权详细文档</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #5b6472;
+      --line: #d6deea;
+      --brand: #146eb4;
+      --accent: #ff9900;
+      --ok: #0f8a5f;
+      --warn: #b45309;
+      --code: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 20px 48px;
+      background:
+        radial-gradient(circle at top right, rgba(255, 153, 0, 0.12), transparent 24%),
+        linear-gradient(180deg, #eef3f9 0%, #f8fafc 100%);
+      color: var(--text);
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+
+    .hero,
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    }
+
+    .hero {
+      padding: 32px;
+      margin-bottom: 18px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(20, 110, 180, 0.1);
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 12px;
+      line-height: 1.35;
+    }
+
+    h1 {
+      margin-top: 14px;
+      font-size: 32px;
+    }
+
+    h2 {
+      font-size: 22px;
+    }
+
+    h3 {
+      font-size: 17px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    .lead {
+      color: var(--muted);
+      font-size: 15px;
+      max-width: 920px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      margin-top: 22px;
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--code);
+      font-size: 15px;
+    }
+
+    .section {
+      padding: 28px 30px;
+      margin-bottom: 18px;
+    }
+
+    .section ol,
+    .section ul {
+      margin: 10px 0 0 20px;
+      padding: 0;
+    }
+
+    .section li {
+      margin-bottom: 8px;
+    }
+
+    .tip,
+    .warning,
+    .success {
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-top: 14px;
+    }
+
+    .tip {
+      background: rgba(20, 110, 180, 0.08);
+      border: 1px solid rgba(20, 110, 180, 0.18);
+    }
+
+    .warning {
+      background: rgba(180, 83, 9, 0.08);
+      border: 1px solid rgba(180, 83, 9, 0.18);
+    }
+
+    .success {
+      background: rgba(15, 138, 95, 0.08);
+      border: 1px solid rgba(15, 138, 95, 0.18);
+    }
+
+    .code {
+      margin: 14px 0 0;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--code);
+      color: #e2e8f0;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--line);
+      padding: 12px 14px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f7f9fc;
+      color: #334155;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .footer {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .hero,
+      .section {
+        box-shadow: none;
+        border-radius: 0;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="hero">
+      <span class="badge">AMAZON SP-API</span>
+      <h1>店铺授权详细文档</h1>
+      <p class="lead">
+        本文档用于说明当前系统“店铺管理”页面的 Amazon SP-API 店铺授权流程、必备配置、字段含义、测试校验方式和常见故障排查。
+        文档内容基于当前项目代码实现整理，可直接交给运营、实施、开发或运维人员使用。
+      </p>
+      <div class="grid">
+        <div class="card">
+          <strong>适用对象</strong>
+          店铺运营、实施人员、后端开发、运维配置人员。
+        </div>
+        <div class="card">
+          <strong>适用页面</strong>
+          “Amazon 店铺中心 / 店铺管理”页面中的新增店铺、去授权、测试连接、立即拉单。
+        </div>
+        <div class="card">
+          <strong>当前内置站点</strong>
+          US（ATVPDKIKX0DER）、CA（A2EUQ1WTGCTBG2）、MX（A1AM78C64UM0Y8）。
+        </div>
+        <div class="card">
+          <strong>授权有效关键点</strong>
+          授权回调必须命中系统配置的回调地址；授权 state 有效期为 20 分钟，超时需要重新发起授权。
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>1. 授权流程概览</h2>
+      <ol>
+        <li>运维先在系统配置中填写 Amazon 应用参数、LWA 参数、AWS 参数、回调地址和加密密钥。</li>
+        <li>在“店铺管理”页面新增店铺，至少填写店铺名称、区域、启用站点，保存记录。</li>
+        <li>点击“去授权”，系统会根据店铺所属区域跳转到对应 Seller Central 授权页。</li>
+        <li>卖家在 Amazon 页面确认授权后，Amazon 会回调系统配置的 `oauth-redirect-uri`。</li>
+        <li>系统使用回调中的 `spapi_oauth_code` 换取 `refresh_token`，并加密保存到数据库。</li>
+        <li>授权成功后，页面中的授权状态会变为“已授权”。建议立即执行“测试连接”。</li>
+        <li>测试连接通过后，可点击“立即拉单”验证订单接口和站点配置是否可用。</li>
+      </ol>
+      <div class="success">
+        标准判定：授权成功后，至少应满足“授权状态 = 已授权”且“测试连接返回可访问站点”。
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. 授权前必备配置</h2>
+      <p class="muted">以下配置位于服务端配置文件的 `amazon` 节点内，缺一项都可能导致授权发起失败、回调失败或接口验签失败。</p>
+      <table>
+        <thead>
+          <tr>
+            <th>配置项</th>
+            <th>是否必填</th>
+            <th>用途说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>`application-id`</td>
+            <td>是</td>
+            <td>用于拼装 Seller Central 授权链接；未配置时无法发起“去授权”。</td>
+          </tr>
+          <tr>
+            <td>`lwa-client-id`</td>
+            <td>是</td>
+            <td>用于将授权码换成 refresh token，以及后续 refresh token 换 access token。</td>
+          </tr>
+          <tr>
+            <td>`lwa-client-secret`</td>
+            <td>是</td>
+            <td>与 `lwa-client-id` 成对使用；未配置时 LWA 换 token 会失败。</td>
+          </tr>
+          <tr>
+            <td>`aws-access-key-id`</td>
+            <td>是</td>
+            <td>请求 SP-API 时参与 AWS SigV4 签名。</td>
+          </tr>
+          <tr>
+            <td>`aws-secret-access-key`</td>
+            <td>是</td>
+            <td>与 `aws-access-key-id` 配套；缺失时接口请求会直接报错。</td>
+          </tr>
+          <tr>
+            <td>`aws-role-arn`</td>
+            <td>否</td>
+            <td>当前代码中已预留字段，但当前流程未直接使用。</td>
+          </tr>
+          <tr>
+            <td>`oauth-redirect-uri`</td>
+            <td>是</td>
+            <td>Amazon 授权完成后的回调地址，必须与 Amazon 开发者后台登记值完全一致。</td>
+          </tr>
+          <tr>
+            <td>`encryption-key`</td>
+            <td>强烈建议填写</td>
+            <td>用于加密保存 refresh token。若未配置，会回退使用 `jwt.signing-key`；生产环境建议单独配置。</td>
+          </tr>
+          <tr>
+            <td>`auto-sync-orders`</td>
+            <td>否</td>
+            <td>控制是否启用自动订单同步任务。</td>
+          </tr>
+          <tr>
+            <td>`order-sync-spec`</td>
+            <td>否</td>
+            <td>自动同步订单的定时表达式。</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="code">amazon:
+  application-id: "amzn1.sellerapps.app.xxxxx"
+  lwa-client-id: "amzn1.application-oa2-client.xxxxx"
+  lwa-client-secret: "your-secret"
+  aws-access-key-id: "AKIAXXXXX"
+  aws-secret-access-key: "xxxxx"
+  aws-role-arn: ""
+  oauth-redirect-uri: "https://your-domain.com/amazonStore/authCallback"
+  encryption-key: "replace-with-a-strong-secret"
+  auto-sync-orders: true
+  order-sync-spec: "0 0 * * * *"</div>
+      <div class="warning">
+        `oauth-redirect-uri` 必须与 Amazon 后台登记值完全一致，包括协议、域名、路径、端口和大小写。只要有一处不一致，授权回调就可能失败。
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. 回调地址写法说明</h2>
+      <p>系统公开授权回调接口为：</p>
+      <div class="code">GET {系统域名}{router-prefix}/amazonStore/authCallback</div>
+      <p>说明如下：</p>
+      <ul>
+        <li>如果系统配置 `system.router-prefix` 为空，则回调地址通常是 `https://your-domain.com/amazonStore/authCallback`。</li>
+        <li>如果系统配置 `system.router-prefix` 为 `/api`，则回调地址通常是 `https://your-domain.com/api/amazonStore/authCallback`。</li>
+        <li>Amazon 回调会携带 `state`、`selling_partner_id`、`spapi_oauth_code` 等参数。</li>
+      </ul>
+      <div class="tip">
+        当前代码中“去授权”会先生成一个随机 `state`，并写入店铺记录中，20 分钟内有效。回调时系统会按这个 `state` 找到对应店铺并完成 token 入库。
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>4. 店铺管理页面字段说明</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>字段</th>
+            <th>说明</th>
+            <th>建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>店铺名称</td>
+            <td>系统内识别用名称，必填。</td>
+            <td>建议用“品牌 + 站点 + 店铺简称”命名。</td>
+          </tr>
+          <tr>
+            <td>区域</td>
+            <td>用于决定授权跳转域名和 SP-API 区域端点。当前支持 `NA`、`EU`、`FE`。</td>
+            <td>北美站选 `NA`，欧洲站选 `EU`，远东站选 `FE`。</td>
+          </tr>
+          <tr>
+            <td>Seller ID</td>
+            <td>卖家店铺标识，可选。</td>
+            <td>如已知可提前填写，不知可留空。</td>
+          </tr>
+          <tr>
+            <td>SP 卖家ID</td>
+            <td>Selling Partner ID，可选，授权回调可自动回填。</td>
+            <td>通常授权完成后由系统写入更稳妥。</td>
+          </tr>
+          <tr>
+            <td>启用站点</td>
+            <td>决定测试连接展示的可用站点，以及订单同步请求的 marketplaceIds。</td>
+            <td>至少选择 1 个；未选择时无法拉单。</td>
+          </tr>
+          <tr>
+            <td>Refresh Token</td>
+            <td>可手动粘贴。只要保存时该字段非空，系统会直接视为“已授权”并加密存储。</td>
+            <td>优先走标准授权流程，手工 token 仅用于迁移或应急。</td>
+          </tr>
+          <tr>
+            <td>启用</td>
+            <td>决定该店铺是否参与启用店铺列表与自动同步流程。</td>
+            <td>正式启用前先完成测试连接。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>5. 标准授权操作步骤</h2>
+      <h3>步骤一：新增店铺</h3>
+      <ol>
+        <li>进入“店铺管理”。</li>
+        <li>点击“新增店铺”。</li>
+        <li>填写店铺名称、区域、启用站点；Seller ID 和 SP 卖家ID可先留空。</li>
+        <li>保存。</li>
+      </ol>
+
+      <h3>步骤二：发起授权</h3>
+      <ol>
+        <li>在对应店铺行点击“去授权”。</li>
+        <li>系统会调用授权发起接口并返回 `authorizeUrl`。</li>
+        <li>浏览器新开窗口进入 Amazon Seller Central 授权页。</li>
+      </ol>
+      <p>区域与 Seller Central 对应关系：</p>
+      <table>
+        <thead>
+          <tr>
+            <th>区域</th>
+            <th>Seller Central 域名</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>NA</td>
+            <td>`https://sellercentral.amazon.com`</td>
+          </tr>
+          <tr>
+            <td>EU</td>
+            <td>`https://sellercentral.amazon.co.uk`</td>
+          </tr>
+          <tr>
+            <td>FE</td>
+            <td>`https://sellercentral.amazon.co.jp`</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>步骤三：Amazon 回调并入库 token</h3>
+      <ol>
+        <li>卖家在 Amazon 页面同意授权。</li>
+        <li>Amazon 将浏览器重定向到配置好的 `oauth-redirect-uri`。</li>
+        <li>系统根据 `state` 找到对应店铺，校验是否过期。</li>
+        <li>系统用 `spapi_oauth_code` 向 Amazon LWA 换取 `refresh_token`。</li>
+        <li>系统加密保存 refresh token，并把授权状态更新为“已授权”。</li>
+      </ol>
+      <div class="success">
+        成功回调后，浏览器会看到“Amazon 店铺授权成功，店铺：xxx，可关闭此窗口。”之类的提示。
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>6. 手动导入 Refresh Token 说明</h2>
+      <p>如果已有可用的 refresh token，也可以不走 Amazon 页面授权，直接在新增/编辑店铺弹窗中填写 `Refresh Token` 后保存。</p>
+      <ol>
+        <li>打开新增或编辑店铺弹窗。</li>
+        <li>将 refresh token 粘贴到“Refresh Token”文本框。</li>
+        <li>点击保存。</li>
+        <li>系统会立即加密保存 token，并把授权状态置为“已授权”。</li>
+      </ol>
+      <div class="warning">
+        手工导入 token 仅代表系统本地已保存凭证，不代表 Amazon 接口一定可用。保存后仍必须执行“测试连接”。
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>7. 授权后验证与拉单逻辑</h2>
+      <h3>测试连接</h3>
+      <ul>
+        <li>页面点击“测试连接”后，系统会调用 SP-API 的卖家站点参与接口。</li>
+        <li>调用成功时，页面会提示“连接成功，可访问站点：...”。</li>
+        <li>调用失败时，系统会把错误写入店铺的 `last_error` 字段，便于排查。</li>
+      </ul>
+
+      <h3>立即拉单</h3>
+      <ul>
+        <li>“立即拉单”仅针对当前店铺执行一次订单同步。</li>
+        <li>同步时会读取“启用站点”里的 marketplaceId 列表。</li>
+        <li>首次同步默认拉取最近 24 小时订单；如果店铺之前同步过，则从“上次同步时间 - 10 分钟”开始补抓。</li>
+        <li>同步成功后会更新“最后同步”时间，并写入同步订单数。</li>
+      </ul>
+      <div class="tip">
+        如果启用站点为空，即使授权成功，“立即拉单”也会失败，因为订单接口请求缺少 marketplaceIds。
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>8. 常见问题与排查建议</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>现象</th>
+            <th>常见原因</th>
+            <th>处理建议</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>点击“去授权”直接报错</td>
+            <td>`application-id` 或 `oauth-redirect-uri` 未配置</td>
+            <td>检查服务端 `amazon` 配置并重启服务。</td>
+          </tr>
+          <tr>
+            <td>授权完成后提示 state 过期</td>
+            <td>授权页面停留时间过长，超过 20 分钟</td>
+            <td>回到系统重新点击“去授权”。</td>
+          </tr>
+          <tr>
+            <td>回调后无法换取 token</td>
+            <td>`lwa-client-id`、`lwa-client-secret` 错误，或回调地址与 Amazon 后台不一致</td>
+            <td>核对 LWA 参数和 redirect URI。</td>
+          </tr>
+          <tr>
+            <td>测试连接失败</td>
+            <td>refresh token 无效、AWS 签名参数错误、区域选错、网络无法访问 Amazon</td>
+            <td>优先重新授权，再检查 AWS 和区域配置。</td>
+          </tr>
+          <tr>
+            <td>重新部署后原 token 失效</td>
+            <td>`encryption-key` 被更换，导致旧 token 无法解密</td>
+            <td>保持加密密钥稳定；如已变更，只能重新授权或重新导入 token。</td>
+          </tr>
+          <tr>
+            <td>立即拉单失败</td>
+            <td>店铺未授权、启用站点为空、订单接口无权限或 Amazon 返回错误</td>
+            <td>先测试连接，再检查站点和订单 API 权限。</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>9. 安全与运维建议</h2>
+      <ul>
+        <li>生产环境必须单独配置强随机 `amazon.encryption-key`，不要长期依赖默认值或仅依赖 JWT 签名密钥。</li>
+        <li>授权使用的回调地址应为 HTTPS 公网地址，并在 Amazon 开发者后台同步登记。</li>
+        <li>不要在前端页面、日志或聊天工具中明文传播 refresh token。</li>
+        <li>若店铺停用或更换授权主体，建议删除旧授权并重新发起授权，避免凭证混用。</li>
+        <li>授权完成后至少执行一次“测试连接”和一次“立即拉单”，再交给业务正式使用。</li>
+      </ul>
+    </section>
+
+    <p class="footer">文档文件：Amazon 店铺授权详细文档。可直接下载保存，也可在浏览器打开后打印为 PDF。</p>
+  </div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"errors"
 	"go/ast"
 	"go/token"
 	"io"
@@ -23,6 +24,9 @@ func (a *Import) Parse(filename string, writer io.Writer) (file *ast.File, err e
 func (a *Import) Rollback(file *ast.File) error {
 	if a.ImportPath == "" {
 		return nil
+	}
+	if file == nil {
+		return errors.New("ast file is nil")
 	}
 	for i := 0; i < len(file.Decls); i++ {
 		v1, o1 := file.Decls[i].(*ast.GenDecl)
@@ -48,6 +52,9 @@ func (a *Import) Rollback(file *ast.File) error {
 func (a *Import) Injection(file *ast.File) error {
 	if a.ImportPath == "" {
 		return nil
+	}
+	if file == nil {
+		return errors.New("ast file is nil")
 	}
 	var has bool
 	for i := 0; i < len(file.Decls); i++ {

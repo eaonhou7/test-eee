@@ -30,6 +30,10 @@ type Server struct {
 
 	Excel Excel `mapstructure:"excel" json:"excel" yaml:"excel"`
 
+	Logistics Logistics `mapstructure:"logistics" json:"logistics" yaml:"logistics"`
+	Amazon    Amazon    `mapstructure:"amazon" json:"amazon" yaml:"amazon"`
+	Finance   Finance   `mapstructure:"finance" json:"finance" yaml:"finance"`
+
 	DiskList []DiskList `mapstructure:"disk-list" json:"disk-list" yaml:"disk-list"`
 
 	// 跨域配置

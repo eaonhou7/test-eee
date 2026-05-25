@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"errors"
 	"go/ast"
 	"go/token"
 	"io"
@@ -36,6 +37,9 @@ func (a *PluginEnter) Parse(filename string, writer io.Writer) (file *ast.File, 
 }
 
 func (a *PluginEnter) Rollback(file *ast.File) error {
+	if file == nil {
+		return errors.New("ast file is nil")
+	}
 	//回滚结构体内内容
 	var structType *ast.StructType
 	ast.Inspect(file, func(n ast.Node) bool {
@@ -54,6 +58,9 @@ func (a *PluginEnter) Rollback(file *ast.File) error {
 		return true
 	})
 
+	if structType == nil {
+		return errors.New("plugin enter struct declaration not found")
+	}
 	if len(structType.Fields.List) == 0 {
 		_ = NewImport(a.ImportPath).Rollback(file)
 	}
@@ -85,7 +92,12 @@ func (a *PluginEnter) Rollback(file *ast.File) error {
 }
 
 func (a *PluginEnter) Injection(file *ast.File) error {
-	_ = NewImport(a.ImportPath).Injection(file)
+	if file == nil {
+		return errors.New("ast file is nil")
+	}
+	if err := NewImport(a.ImportPath).Injection(file); err != nil {
+		return err
+	}
 
 	has := false
 	hasVar := false
@@ -109,6 +121,9 @@ func (a *PluginEnter) Injection(file *ast.File) error {
 	})
 
 	if !has {
+		if firstStruct == nil {
+			return errors.New("plugin enter struct declaration not found")
+		}
 		field := &ast.Field{
 			Names: []*ast.Ident{{Name: a.StructName}},
 			Type:  &ast.Ident{Name: a.StructCamelName},
@@ -141,6 +156,10 @@ func (a *PluginEnter) Injection(file *ast.File) error {
 	})
 
 	if !hasVar {
+		if varSpec == nil {
+			varSpec = &ast.GenDecl{Tok: token.VAR}
+			file.Decls = append(file.Decls, varSpec)
+		}
 		spec := &ast.ValueSpec{
 			Names: []*ast.Ident{{Name: a.ModuleName}},
 			Values: []ast.Expr{

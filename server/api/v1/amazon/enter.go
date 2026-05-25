@@ -1,0 +1,66 @@
+package amazon
+
+import "github.com/flipped-aurora/gin-vue-admin/server/service"
+
+type ApiGroup struct {
+	DashboardApi
+	FinanceDashboardApi
+	FinanceSettlementApi
+	FinanceAdsApi
+	FinanceCostBillApi
+	FinanceReportApi
+	FinanceARAPApi
+	FinanceFXApi
+	LogisticsQuoteApi
+	LogisticsLibraryApi
+	TemplateApi
+	ListingFamilyApi
+	ListingApi
+	ListingProfitApi
+	ListingImageApi
+	CollectorApi
+	Collector1688Api
+	StoreApi
+	PublishApi
+	ListingSyncApi
+	OrderApi
+	ProcurementApi
+	ReturnApi
+	ReturnProviderApi
+	ReturnWarehouseApi
+	SupportInboxApi
+	SupportTemplateApi
+}
+
+var amazonDashboardService = service.ServiceGroupApp.AmazonServiceGroup.DashboardService
+var amazonFinanceDashboardService = service.ServiceGroupApp.AmazonServiceGroup.FinanceDashboardService
+var amazonFinanceSettlementService = service.ServiceGroupApp.AmazonServiceGroup.FinanceSettlementService
+var amazonFinanceAdsService = service.ServiceGroupApp.AmazonServiceGroup.FinanceAdsService
+var amazonFinanceCostBillService = service.ServiceGroupApp.AmazonServiceGroup.FinanceCostBillService
+var amazonFinanceReportService = service.ServiceGroupApp.AmazonServiceGroup.FinanceReportService
+var amazonFinanceARAPService = service.ServiceGroupApp.AmazonServiceGroup.FinanceARAPService
+var amazonFinanceFXService = service.ServiceGroupApp.AmazonServiceGroup.FinanceFXService
+var logisticsQuoteService = service.ServiceGroupApp.AmazonServiceGroup.LogisticsQuoteService
+var logisticsLibraryService = service.ServiceGroupApp.AmazonServiceGroup.LogisticsLibraryService
+var amazonTemplateService = service.ServiceGroupApp.AmazonServiceGroup.TemplateService
+var amazonListingFamilyService = service.ServiceGroupApp.AmazonServiceGroup.FamilyService
+var amazonListingService = service.ServiceGroupApp.AmazonServiceGroup.ItemService
+var amazonListingProfitService = service.ServiceGroupApp.AmazonServiceGroup.ProfitService
+var amazonListingValidationService = service.ServiceGroupApp.AmazonServiceGroup.ValidationService
+var amazonListingExportService = service.ServiceGroupApp.AmazonServiceGroup.ExportService
+var amazonListingImageService = service.ServiceGroupApp.AmazonServiceGroup.ImageService
+var amazonCollectorService = service.ServiceGroupApp.AmazonServiceGroup.CollectorService
+var amazonCollector1688Service = service.ServiceGroupApp.AmazonServiceGroup.Collector1688Service
+var amazonStoreService = service.ServiceGroupApp.AmazonServiceGroup.StoreService
+var amazonPublishService = service.ServiceGroupApp.AmazonServiceGroup.PublishService
+var amazonListingSyncService = service.ServiceGroupApp.AmazonServiceGroup.ListingSyncService
+var amazonFBAInventorySyncService = service.ServiceGroupApp.AmazonServiceGroup.FBAInventorySyncService
+var amazonOrderService = service.ServiceGroupApp.AmazonServiceGroup.OrderService
+var amazonFulfillmentOrchestrator = service.ServiceGroupApp.AmazonServiceGroup.FulfillmentOrchestrator
+var amazonProcurementTaskService = service.ServiceGroupApp.AmazonServiceGroup.ProcurementTaskService
+var amazonShipmentConfirmationService = service.ServiceGroupApp.AmazonServiceGroup.ShipmentConfirmationService
+var amazonReturnService = service.ServiceGroupApp.AmazonServiceGroup.ReturnService
+var amazonReturnProviderService = service.ServiceGroupApp.AmazonServiceGroup.ReturnProviderService
+var amazonReturnWarehouseService = service.ServiceGroupApp.AmazonServiceGroup.ReturnWarehouseService
+var amazonSupportInboxService = service.ServiceGroupApp.AmazonServiceGroup.SupportInboxService
+var amazonSupportTemplateService = service.ServiceGroupApp.AmazonServiceGroup.SupportTemplateService

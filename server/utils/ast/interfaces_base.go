@@ -46,10 +46,10 @@ func (a *Base) Format(filename string, writer io.Writer, file *ast.File) error {
 	}
 	if writer == nil {
 		open, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC, 0666)
-		defer open.Close()
 		if err != nil {
 			return errors.Wrapf(err, "[filepath:%s]打开文件失败!", filename)
 		}
+		defer open.Close()
 		writer = open
 	}
 	err := format.Node(writer, fileSet, file)

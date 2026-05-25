@@ -255,6 +255,51 @@ hua-wei-obs:
 excel:
     dir: ./resource/excel/
 
+# logistics quote configuration
+logistics:
+    yuntu-rate-file: /Users/eaon/Downloads/亚马逊Buy Shipping 2026-04-13.xlsx
+    yanwen-rate-file: /Users/eaon/Downloads/广州燕文报价单20260410版.xlsx
+    upload-max-mb: 16
+    yuntu-api:
+        enabled: false
+        base-url: ""
+        create-path: ""
+        tracking-path: ""
+        auth-header: Authorization
+        auth-token: ""
+    yanwen-api:
+        enabled: false
+        base-url: ""
+        create-path: ""
+        tracking-path: ""
+        auth-header: Authorization
+        auth-token: ""
+
+# amazon sp-api configuration
+amazon:
+    application-id: ""
+    lwa-client-id: ""
+    lwa-client-secret: ""
+    aws-access-key-id: ""
+    aws-secret-access-key: ""
+    aws-role-arn: ""
+    oauth-redirect-uri: ""
+    encryption-key: ""
+    auto-sync-orders: true
+    order-sync-spec: "0 0 * * * *"
+    pickup-sync-spec: "0 */10 * * * *"
+    confirm-shipment-enabled: false
+
+# amazon finance configuration
+finance:
+    enabled: true
+    fx-sync-spec: "0 0 6 * * *"
+    settlement-sync-spec: "0 10 6 * * *"
+    ads-sync-spec: "0 20 6 * * *"
+    recalc-spec: "0 */10 * * * *"
+    timezone: Asia/Shanghai
+    week-start: monday
+
 # disk usage configuration
 disk-list:
     - mount-point: "/"

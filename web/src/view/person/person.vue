@@ -358,10 +358,12 @@
 
 <script setup>
   import { setSelfInfo, changePassword } from '@/api/user.js'
-  import { reactive, ref, watch } from 'vue'
+  import { defineAsyncComponent, reactive, ref, watch } from 'vue'
   import { ElMessage } from 'element-plus'
   import { useUserStore } from '@/pinia/modules/user'
-  import SelectImage from '@/components/selectImage/selectImage.vue'
+
+  const SelectImage = defineAsyncComponent(() => import('@/components/selectImage/selectImage.vue'))
+
   defineOptions({
     name: 'Person'
   })

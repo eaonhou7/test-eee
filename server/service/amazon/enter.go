@@ -1,0 +1,40 @@
+package amazon
+
+type ServiceGroup struct {
+	DashboardService
+	FinanceDashboardService
+	FinanceSettlementService
+	FinanceAdsService
+	FinanceCostBillService
+	FinanceReportService
+	FinanceARAPService
+	FinanceFXService
+	FinanceRecalcService
+	LogisticsQuoteService
+	LogisticsLibraryService
+	TemplateService
+	FamilyService
+	ItemService
+	ProfitService
+	ValidationService
+	ExportService
+	ImageService
+	CollectorService
+	Collector1688Service
+	StoreService
+	AmazonFeedService
+	PublishService
+	ListingSyncService
+	FBAInventorySyncService
+	OrderService
+	FulfillmentOrchestrator
+	ProcurementTaskService
+	ShipmentService
+	ShipmentConfirmationService
+	AmazonShipmentConfirmService
+	ReturnProviderService
+	ReturnWarehouseService
+	ReturnService
+	SupportInboxService
+	SupportTemplateService
+}

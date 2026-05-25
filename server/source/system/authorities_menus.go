@@ -48,60 +48,107 @@ func (i *initMenuAuthority) InitializeData(ctx context.Context) (next context.Co
 	}
 	next = ctx
 
-	// 构建菜单ID映射，方便快速查找
-	menuMap := make(map[uint]sysModel.SysBaseMenu)
-	for _, menu := range allMenus {
-		menuMap[menu.ID] = menu
+	authorityMap := make(map[uint]sysModel.SysAuthority, len(authorities))
+	for _, authority := range authorities {
+		authorityMap[authority.AuthorityId] = authority
 	}
 
-	// 为不同角色分配不同权限
-	// 1. 超级管理员角色(888) - 拥有所有菜单权限
-	if err = db.Model(&authorities[0]).Association("SysBaseMenus").Replace(allMenus); err != nil {
+	menuMap := make(map[uint]sysModel.SysBaseMenu, len(allMenus))
+	menuNameMap := make(map[string]sysModel.SysBaseMenu, len(allMenus))
+	for _, menu := range allMenus {
+		menuMap[menu.ID] = menu
+		menuNameMap[menu.Name] = menu
+	}
+
+	superAdmin, ok := authorityMap[888]
+	if !ok {
+		return next, errors.New("为超级管理员分配菜单失败: 缺少 authority 888")
+	}
+	if err = db.Model(&superAdmin).Association("SysBaseMenus").Replace(allMenus); err != nil {
 		return next, errors.Wrap(err, "为超级管理员分配菜单失败")
 	}
 
-	// 2. 普通用户角色(8881) - 仅拥有基础功能菜单
-	// 仅选择部分父级菜单及其子菜单
 	var menu8881 []sysModel.SysBaseMenu
+	appendMenuWithAncestors(&menu8881, menuMap, menuNameMap,
+		"dashboard",
+		"about",
+		"person",
+		"state",
+	)
 
-	// 添加仪表盘、关于我们和个人信息菜单
-	for _, menu := range allMenus {
-		if menu.ParentId == 0 && (menu.Name == "dashboard" || menu.Name == "about" || menu.Name == "person" || menu.Name == "state") {
-			menu8881 = append(menu8881, menu)
-		}
+	normalUser, ok := authorityMap[8881]
+	if !ok {
+		return next, errors.New("为普通用户分配菜单失败: 缺少 authority 8881")
 	}
-
-	if err = db.Model(&authorities[1]).Association("SysBaseMenus").Replace(menu8881); err != nil {
+	if err = db.Model(&normalUser).Association("SysBaseMenus").Replace(uniqueMenus(menu8881)); err != nil {
 		return next, errors.Wrap(err, "为普通用户分配菜单失败")
 	}
 
-	// 3. 测试角色(9528) - 拥有部分菜单权限
 	var menu9528 []sysModel.SysBaseMenu
+	appendMenuWithAncestors(&menu9528, menuMap, menuNameMap,
+		"https://www.gin-vue-admin.com",
+		"dashboard",
+		"about",
+		"state",
+		"upload",
+		"breakpoint",
+		"customer",
+		"autoPkg",
+		"autoCode",
+		"autoCodeAdmin",
+		"formCreate",
+		"aiWorkflow",
+		"exportTemplate",
+		"mcpTest",
+		"mcpTool",
+		"skills",
+		"picture",
+		"amazonLogisticsLibrary",
+		"amazonLogisticsQuote",
+		"amazonTemplateCenter",
+		"amazonListingManager",
+	)
 
-	// 添加所有父级菜单
-	for _, menu := range allMenus {
-		if menu.ParentId == 0 {
-			menu9528 = append(menu9528, menu)
-		}
+	testUser, ok := authorityMap[9528]
+	if !ok {
+		return next, errors.New("为测试角色分配菜单失败: 缺少 authority 9528")
 	}
-
-	// 添加部分子菜单 - 系统工具、示例文件等模块的子菜单
-	for _, menu := range allMenus {
-		parentName := ""
-		if menu.ParentId > 0 && menuMap[menu.ParentId].Name != "" {
-			parentName = menuMap[menu.ParentId].Name
-		}
-
-		if menu.ParentId > 0 && (parentName == "systemTools" || parentName == "example") {
-			menu9528 = append(menu9528, menu)
-		}
-	}
-
-	if err = db.Model(&authorities[2]).Association("SysBaseMenus").Replace(menu9528); err != nil {
+	if err = db.Model(&testUser).Association("SysBaseMenus").Replace(uniqueMenus(menu9528)); err != nil {
 		return next, errors.Wrap(err, "为测试角色分配菜单失败")
 	}
 
 	return next, nil
+}
+
+func appendMenuWithAncestors(target *[]sysModel.SysBaseMenu, menuMap map[uint]sysModel.SysBaseMenu, menuNameMap map[string]sysModel.SysBaseMenu, names ...string) {
+	for _, name := range names {
+		menu, ok := menuNameMap[name]
+		if !ok {
+			continue
+		}
+		*target = append(*target, menu)
+		for parentID := menu.ParentId; parentID != 0; {
+			parentMenu, ok := menuMap[parentID]
+			if !ok {
+				break
+			}
+			*target = append(*target, parentMenu)
+			parentID = parentMenu.ParentId
+		}
+	}
+}
+
+func uniqueMenus(menus []sysModel.SysBaseMenu) []sysModel.SysBaseMenu {
+	seen := make(map[uint]struct{}, len(menus))
+	result := make([]sysModel.SysBaseMenu, 0, len(menus))
+	for _, menu := range menus {
+		if _, ok := seen[menu.ID]; ok {
+			continue
+		}
+		seen[menu.ID] = struct{}{}
+		result = append(result, menu)
+	}
+	return result
 }
 
 func (i *initMenuAuthority) DataInserted(ctx context.Context) bool {

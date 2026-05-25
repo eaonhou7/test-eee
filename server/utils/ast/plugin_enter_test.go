@@ -99,10 +99,15 @@ func TestPluginEnter_Injection(t *testing.T) {
 			}
 			file, err := a.Parse(a.Path, nil)
 			if err != nil {
-				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				if !tt.wantErr {
+					t.Fatalf("Parse() error = %v", err)
+				}
+				return
 			}
-			a.Injection(file)
-			err = a.Format(a.Path, nil, file)
+			err = a.Injection(file)
+			if err == nil {
+				err = a.Format(a.Path, nil, file)
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Injection() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -188,10 +193,15 @@ func TestPluginEnter_Rollback(t *testing.T) {
 			}
 			file, err := a.Parse(a.Path, nil)
 			if err != nil {
-				t.Errorf("Parse() error = %v, wantErr %v", err, tt.wantErr)
+				if !tt.wantErr {
+					t.Fatalf("Parse() error = %v", err)
+				}
+				return
 			}
-			a.Rollback(file)
-			err = a.Format(a.Path, nil, file)
+			err = a.Rollback(file)
+			if err == nil {
+				err = a.Format(a.Path, nil, file)
+			}
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Rollback() error = %v, wantErr %v", err, tt.wantErr)
 			}

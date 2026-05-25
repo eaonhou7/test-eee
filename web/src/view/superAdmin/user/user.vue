@@ -263,11 +263,12 @@
   import WarningBar from '@/components/warningBar/warningBar.vue'
   import { setUserInfo, resetPassword } from '@/api/user.js'
 
-  import { nextTick, ref, watch } from 'vue'
+  import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
-  import SelectImage from '@/components/selectImage/selectImage.vue'
   import { useAppStore } from "@/pinia";
   import { toSQLLine } from '@/utils/stringFun'
+
+  const SelectImage = defineAsyncComponent(() => import('@/components/selectImage/selectImage.vue'))
 
   defineOptions({
     name: 'User'

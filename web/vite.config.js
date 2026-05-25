@@ -11,13 +11,44 @@ import vueRootValidator from 'vite-check-multiple-dom'
 import { AddSecret } from './vitePlugin/secret'
 import UnoCSS from '@unocss/vite'
 
+const createManualChunk = (id) => {
+  if (!id.includes('node_modules')) {
+    return undefined
+  }
+  if (id.includes('ace-builds') || id.includes('vue3-ace-editor')) {
+    return 'vendor-ace'
+  }
+  if (id.includes('@wangeditor/')) {
+    return 'vendor-wangeditor'
+  }
+  if (id.includes('@vue-office/')) {
+    return 'vendor-vue-office'
+  }
+  if (id.includes('vue-cropper')) {
+    return 'vendor-image-tools'
+  }
+  if (id.includes('echarts') || id.includes('vue-echarts')) {
+    return 'vendor-echarts'
+  }
+  if (id.includes('@form-create/') || id.includes('vform3-builds')) {
+    return 'vendor-form-create'
+  }
+  return undefined
+}
+
 // @see https://cn.vitejs.dev/config/
-export default ({ mode }) => {
+export default ({ command, mode }) => {
   AddSecret('')
   const env = loadEnv(mode, process.cwd())
   viteLogo(env)
 
   const timestamp = Date.parse(new Date())
+  const isServe = command === 'serve'
+  const isFastBuild = command === 'build' && env.VITE_ENABLE_LEGACY === 'false'
+  const isReleaseBuild = command === 'build' && !isFastBuild
+  const reportCompressedSize = env.VITE_REPORT_COMPRESSED_SIZE
+    ? env.VITE_REPORT_COMPRESSED_SIZE === 'true'
+    : isReleaseBuild
 
   const optimizeDeps = {}
 
@@ -32,13 +63,32 @@ export default ({ mode }) => {
     output: {
       entryFileNames: 'assets/087AC4D233B64EB0[name].[hash].js',
       chunkFileNames: 'assets/087AC4D233B64EB0[name].[hash].js',
-      assetFileNames: 'assets/087AC4D233B64EB0[name].[hash].[ext]'
+      assetFileNames: 'assets/087AC4D233B64EB0[name].[hash].[ext]',
+      manualChunks: createManualChunk
     }
   }
 
   const base = '/'
   const root = './'
   const outDir = 'dist'
+  const allowedHosts = [
+    'localhost',
+    '127.0.0.1',
+    '.ngrok-free.app',
+    '.ngrok.app'
+  ]
+
+  if (env.VITE_ALLOWED_HOSTS) {
+    env.VITE_ALLOWED_HOSTS
+      .split(',')
+      .map((host) => host.trim())
+      .filter(Boolean)
+      .forEach((host) => {
+        if (!allowedHosts.includes(host)) {
+          allowedHosts.push(host)
+        }
+      })
+  }
 
   const config = {
     base: base, // 编译后js导入的资源路径
@@ -56,8 +106,10 @@ export default ({ mode }) => {
     },
     server: {
       // 如果使用docker-compose开发模式，设置为false
-      open: true,
+      host: '0.0.0.0',
+      open: isServe && env.VITE_AUTO_OPEN !== 'false',
       port: Number(env.VITE_CLI_PORT),
+      allowedHosts,
       proxy: {
         // 把key的路径代理到target位置
         // detail: https://cli.vuejs.org/config/#devserver-proxy
@@ -78,17 +130,22 @@ export default ({ mode }) => {
       }
     },
     build: {
-      minify: 'terser', // 是否进行压缩,boolean | 'terser' | 'esbuild',默认使用terser
+      minify: isFastBuild ? 'esbuild' : 'terser', // 本地快速构建走 esbuild，完整构建保留 terser
+      cssMinify: isFastBuild ? 'esbuild' : undefined,
       manifest: false, // 是否产出manifest.json
       sourcemap: false, // 是否产出sourcemap.json
       outDir: outDir, // 产出目录
-      terserOptions: {
-        compress: {
-          //生产环境时移除console
-          drop_console: true,
-          drop_debugger: true
-        }
-      },
+      reportCompressedSize,
+      chunkSizeWarningLimit: isFastBuild ? 2200 : 1400,
+      terserOptions: isFastBuild
+        ? undefined
+        : {
+          compress: {
+            //生产环境时移除console
+            drop_console: true,
+            drop_debugger: true
+          }
+        },
       rollupOptions
     },
     esbuild,
@@ -96,7 +153,7 @@ export default ({ mode }) => {
     plugins: [
       env.VITE_POSITION === 'open' &&
       vueDevTools({ launchEditor: env.VITE_EDITOR }),
-      legacyPlugin({
+      isReleaseBuild && legacyPlugin({
         targets: [
           'Android > 39',
           'Chrome >= 60',
@@ -112,7 +169,7 @@ export default ({ mode }) => {
       VueFilePathPlugin('./src/pathInfo.json'),
       UnoCSS(),
       vueRootValidator()
-    ]
+    ].filter(Boolean)
   }
   return config
 }

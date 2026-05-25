@@ -1,4 +1,8 @@
 SHELL = /bin/bash
+ROOT_DIR           := $(shell pwd)
+GO_CACHE_DIR       := $(ROOT_DIR)/tmp/dev-runtime/go-cache
+GO_MOD_CACHE_DIR   := $(ROOT_DIR)/tmp/dev-runtime/go-mod
+SERVER_BIN_FAST    := $(ROOT_DIR)/tmp/dev-runtime/bin/gva-server
 
 #SCRIPT_DIR         = $(shell pwd)/etc/script
 #请选择golang版本
@@ -45,15 +49,46 @@ build-local:
 
 #本地环境打包前端
 build-web-local:
-	@cd web/ && if [ -d "dist" ];then rm -rf dist; else echo "OK!"; fi \
-	&& yarn config set registry http://mirrors.cloud.tencent.com/npm/ && yarn install && yarn build
+	@cd web/ \
+	&& if [ ! -d "node_modules" ] || [ ! -f "node_modules/.deps-stamp" ] || [ "package.json" -nt "node_modules/.deps-stamp" ] || [ "package-lock.json" -nt "node_modules/.deps-stamp" ]; then npm install --prefer-offline --no-audit --no-fund && touch node_modules/.deps-stamp; else echo "web deps cache hit"; fi \
+	&& npm run build
+
+#本地环境显式发布构建前端
+build-web-release:
+	@cd web/ \
+	&& if [ ! -d "node_modules" ] || [ ! -f "node_modules/.deps-stamp" ] || [ "package.json" -nt "node_modules/.deps-stamp" ] || [ "package-lock.json" -nt "node_modules/.deps-stamp" ]; then npm install --prefer-offline --no-audit --no-fund && touch node_modules/.deps-stamp; else echo "web deps cache hit"; fi \
+	&& npm run build:release
+
+#本地环境快速打包前端（关闭 legacy 双产物，适合本地验证）
+build-web-fast:
+	@cd web/ \
+	&& if [ ! -d "node_modules" ] || [ ! -f "node_modules/.deps-stamp" ] || [ "package.json" -nt "node_modules/.deps-stamp" ] || [ "package-lock.json" -nt "node_modules/.deps-stamp" ]; then npm install --prefer-offline --no-audit --no-fund && touch node_modules/.deps-stamp; else echo "web deps cache hit"; fi \
+	&& npm run build:fast
+
+#本地环境快速启动前端开发服务
+dev-web-fast:
+	@cd web/ \
+	&& if [ ! -d "node_modules" ] || [ ! -f "node_modules/.deps-stamp" ] || [ "package.json" -nt "node_modules/.deps-stamp" ] || [ "package-lock.json" -nt "node_modules/.deps-stamp" ]; then npm install --prefer-offline --no-audit --no-fund && touch node_modules/.deps-stamp; else echo "web deps cache hit"; fi \
+	&& npm run dev:fast
 
 #本地环境打包后端
 build-server-local:
-	@cd server/ && if [ -f "server" ];then rm -rf server; else echo "OK!"; fi \
-	&& go env -w GO111MODULE=on && go env -w GOPROXY=https://goproxy.cn,direct \
-	&& go env -w CGO_ENABLED=0 && go env  && go mod tidy \
-	&& go build -ldflags "-B 0x$(shell head -c20 /dev/urandom|od -An -tx1|tr -d ' \n') -X main.Version=${TAGS_OPT}" -v
+	@mkdir -p "$(GO_CACHE_DIR)" "$(GO_MOD_CACHE_DIR)"
+	@cd server/ \
+	&& env -u GOROOT GO111MODULE=on GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0 GOCACHE="$(GO_CACHE_DIR)" GOMODCACHE="$(GO_MOD_CACHE_DIR)" go build -ldflags "-B 0x$(shell head -c20 /dev/urandom|od -An -tx1|tr -d ' \n') -X main.Version=${TAGS_OPT}" -o server
+
+#本地环境快速打包后端
+build-server-fast:
+	@mkdir -p "$(GO_CACHE_DIR)" "$(GO_MOD_CACHE_DIR)"
+	@cd server/ \
+	&& env -u GOROOT GO111MODULE=on CGO_ENABLED=0 GOCACHE="$(GO_CACHE_DIR)" GOMODCACHE="$(GO_MOD_CACHE_DIR)" go build -o server
+
+#本地环境快速编译并运行后端
+dev-server-fast:
+	@mkdir -p "$(GO_CACHE_DIR)" "$(GO_MOD_CACHE_DIR)" "$(dir $(SERVER_BIN_FAST))"
+	@cd server/ \
+	&& env -u GOROOT GO111MODULE=on CGO_ENABLED=0 GOCACHE="$(GO_CACHE_DIR)" GOMODCACHE="$(GO_MOD_CACHE_DIR)" go build -o "$(SERVER_BIN_FAST)" . \
+	&& env GVA_CONFIG=config.local.yaml "$(SERVER_BIN_FAST)"
 
 #打包前后端二合一镜像
 image: build

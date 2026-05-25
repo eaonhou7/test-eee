@@ -4,8 +4,8 @@ import { asyncMenu } from '@/api/menu'
 import { defineStore } from 'pinia'
 import { ref, watchEffect } from 'vue'
 import pathInfo from '@/pathInfo.json'
-import {useRoute} from "vue-router";
-import {config} from "@/core/config.js";
+import { useRoute } from 'vue-router'
+import { config } from '@/core/config.js'
 
 const notLayoutRouterArr = []
 const keepAliveRoutersArr = []
@@ -48,12 +48,25 @@ const KeepAliveFilter = (routes) => {
     })
 }
 
+const clearObject = (target) => {
+  Object.keys(target).forEach((key) => {
+    delete target[key]
+  })
+}
+
+const toMenuList = (menus) => {
+  if (Array.isArray(menus)) {
+    return menus
+  }
+  return Object.values(menus || {})
+}
+
 export const useRouterStore = defineStore('router', () => {
   const keepAliveRouters = ref([])
   const asyncRouterFlag = ref(0)
   const setKeepAliveRouters = (history) => {
     const keepArrTemp = []
-    
+
     // 1. 首先添加原有的keepAlive配置
     keepArrTemp.push(...keepAliveRoutersArr)
     if (config.keepAliveTabs) {
@@ -67,7 +80,7 @@ export const useRouterStore = defineStore('router', () => {
             keepArrTemp.push(componentName)
           }
         }
-        
+
         // 3. 如果子路由在tabs中打开，父路由也需要keepAlive
         if (nameMap[item.name]) {
           keepArrTemp.push(nameMap[item.name])
@@ -115,6 +128,12 @@ export const useRouterStore = defineStore('router', () => {
   const topActive = ref('')
 
   const setLeftMenu = (name) => {
+    if (!name || !menuMap[name] || menuMap[name].hidden) {
+      sessionStorage.removeItem('topActive')
+      topActive.value = ''
+      leftMenu.value = []
+      return undefined
+    }
     sessionStorage.setItem('topActive', name)
     topActive.value = name
     leftMenu.value = []
@@ -124,39 +143,68 @@ export const useRouterStore = defineStore('router', () => {
     return menuMap[name]?.children
   }
 
-  const findTopActive = (menuMap, routeName) => {
-    for (let topName in menuMap) {
-      const topItem = menuMap[topName];
-      if (topItem.children?.some(item => item.name === routeName)) {
-        return topName;
+  const hasTopMenu = (name) => !!(name && menuMap[name] && !menuMap[name].hidden)
+
+  const findTopActive = (menus, routeName) => {
+    for (const topItem of toMenuList(menus)) {
+      if (!topItem || topItem.hidden) {
+        continue
       }
-      const foundName = findTopActive(topItem.children || {}, routeName);
+      const topName = topItem.name
+      if (topName === routeName) {
+        return topName
+      }
+      if (topItem.children?.some((item) => item.name === routeName)) {
+        return topName
+      }
+      const foundName = findTopActive(topItem.children || [], routeName)
       if (foundName) {
-        return topName;
+        return topName
       }
     }
-    return null;
-  };
+    return null
+  }
 
   watchEffect(() => {
-    let topActive = sessionStorage.getItem('topActive')
+    let savedTopActive = sessionStorage.getItem('topActive')
+    clearObject(menuMap)
     // 初始化菜单内容，防止重复添加
-    topMenu.value = [];
+    topMenu.value = []
     asyncRouters.value[0]?.children.forEach((item) => {
       if (item.hidden) return
       menuMap[item.name] = item
       topMenu.value.push({ ...item, children: [] })
     })
-    if (!topActive || topActive === 'undefined' || topActive === 'null') {
-      topActive = findTopActive(menuMap, route.name);
+    if (
+      !savedTopActive ||
+      savedTopActive === 'undefined' ||
+      savedTopActive === 'null' ||
+      !hasTopMenu(savedTopActive)
+    ) {
+      if (savedTopActive && !hasTopMenu(savedTopActive)) {
+        sessionStorage.removeItem('topActive')
+      }
+      savedTopActive = findTopActive(asyncRouters.value[0]?.children || [], route.name)
     }
-    setLeftMenu(topActive)
+    if (!hasTopMenu(savedTopActive)) {
+      savedTopActive = topMenu.value[0]?.name || ''
+    }
+    if (savedTopActive) {
+      setLeftMenu(savedTopActive)
+    } else {
+      leftMenu.value = []
+      topActive.value = ''
+    }
   })
 
   const routeMap = {}
   // 从后台获取动态路由
   const SetAsyncRouter = async () => {
     asyncRouterFlag.value++
+    notLayoutRouterArr.length = 0
+    keepAliveRoutersArr.length = 0
+    clearObject(nameMap)
+    clearObject(routeMap)
     const baseRouter = [
       {
         path: '/layout',

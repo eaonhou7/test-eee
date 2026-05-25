@@ -4,6 +4,7 @@
 import packageInfo from '../../package.json'
 
 const greenText = (text) => `\x1b[32m${text}\x1b[0m`
+const resolvePort = (value, fallback) => value || fallback
 
 export const config = {
   appName: 'Gin-Vue-Admin',
@@ -14,6 +15,8 @@ export const config = {
 
 export const viteLogo = (env) => {
   if (config.showViteLogo) {
+    const serverPort = resolvePort(env.VITE_SERVER_PORT, '8888')
+    const cliPort = resolvePort(env.VITE_CLI_PORT, '8080')
     console.log(
       greenText(
         `> 欢迎使用Gin-Vue-Admin，开源地址：https://github.com/flipped-aurora/gin-vue-admin`
@@ -30,11 +33,11 @@ export const viteLogo = (env) => {
     )
     console.log(
       greenText(
-        `> 默认自动化文档地址:http://127.0.0.1:${env.VITE_SERVER_PORT}/swagger/index.html`
+        `> 默认自动化文档地址:http://127.0.0.1:${serverPort}/swagger/index.html`
       )
     )
     console.log(
-      greenText(`> 默认前端文件运行地址:http://127.0.0.1:${env.VITE_CLI_PORT}`)
+      greenText(`> 默认前端文件运行地址:http://127.0.0.1:${cliPort}`)
     )
     console.log(
       greenText(

@@ -1,0 +1,72 @@
+#amazon-collector-floating-button {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 2147483647;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #2563eb, #0f766e);
+  color: #fff;
+  font: 600 14px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
+  cursor: pointer;
+}
+
+#amazon-collector-floating-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+#amazon-collector-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 118px;
+  z-index: 2147483647;
+  max-width: 320px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.35);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#amazon-collector-toast[data-tone="success"] {
+  background: rgba(6, 95, 70, 0.95);
+}
+
+#amazon-collector-toast[data-tone="error"] {
+  background: rgba(153, 27, 27, 0.95);
+}
+
+#amazon-collector-toast.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#amazon-collector-floating-badge {
+  position: fixed;
+  right: 24px;
+  bottom: 78px;
+  z-index: 2147483647;
+  max-width: 320px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
+  font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.25);
+}
+
+#amazon-collector-floating-badge[data-tone="success"] {
+  background: rgba(6, 95, 70, 0.92);
+}
+
+#amazon-collector-floating-badge[data-tone="warning"] {
+  background: rgba(146, 64, 14, 0.94);
+}

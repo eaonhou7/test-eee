@@ -3,9 +3,9 @@ package system
 import (
 	"context"
 	"encoding/json"
-	"github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
-	"reflect"
 	"testing"
+
+	"github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
 )
 
 func Test_autoCodeTemplate_Create(t *testing.T) {
@@ -31,18 +31,23 @@ func Test_autoCodeTemplate_Create(t *testing.T) {
 }
 
 func Test_autoCodeTemplate_Preview(t *testing.T) {
+	setupAutoCodePackageTest(t)
+	seedAutoCodePackage(t, "gva", "package")
+	seedAutoCodePackage(t, "plugdemo", "plugin")
+
 	type args struct {
 		ctx  context.Context
 		info request.AutoCode
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    map[string]string
-		wantErr bool
+		name        string
+		packageName string
+		args        args
+		wantErr     bool
 	}{
 		{
-			name: "测试 package",
+			name:        "测试 package",
+			packageName: "gva",
 			args: args{
 				ctx:  context.Background(),
 				info: request.AutoCode{},
@@ -50,7 +55,8 @@ func Test_autoCodeTemplate_Preview(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "测试 plugin",
+			name:        "测试 plugin",
+			packageName: "plugdemo",
 			args: args{
 				ctx:  context.Background(),
 				info: request.AutoCode{},
@@ -71,13 +77,18 @@ func Test_autoCodeTemplate_Preview(t *testing.T) {
 				t.Error(err)
 				return
 			}
+			tt.args.info.Package = tt.packageName
+			tt.args.info.GenerateServer = true
 			got, err := AutoCodeTemplate.Preview(tt.args.ctx, tt.args.info)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Preview() error = %+v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Preview() got = %v, want %v", got, tt.want)
+			if got == nil {
+				t.Fatalf("Preview() returned nil preview")
+			}
+			if len(got) == 0 {
+				t.Fatalf("Preview() expected generated preview content")
 			}
 		})
 	}
