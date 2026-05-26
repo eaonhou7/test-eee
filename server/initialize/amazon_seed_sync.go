@@ -76,6 +76,9 @@ func syncAmazonSeeds(db *gorm.DB) error {
 	if err := syncAmazonLogisticsPlatforms(db); err != nil {
 		return err
 	}
+	if !amazonSeedSystemDataReady(db) {
+		return nil
+	}
 	if err := upsertAmazonMenus(db, menuSeeds); err != nil {
 		return err
 	}
@@ -99,6 +102,30 @@ func syncAmazonSeeds(db *gorm.DB) error {
 	}
 	_ = utils.GetCasbin().LoadPolicy()
 	return nil
+}
+
+func amazonSeedSystemDataReady(db *gorm.DB) bool {
+	requiredTables := []interface{}{
+		system.SysUser{},
+		system.SysAuthority{},
+		system.SysBaseMenu{},
+		system.SysApi{},
+		adapter.CasbinRule{},
+	}
+	for _, table := range requiredTables {
+		if !db.Migrator().HasTable(table) {
+			return false
+		}
+	}
+
+	var count int64
+	if err := db.Model(&system.SysUser{}).Where("username = ?", "admin").Count(&count).Error; err != nil || count == 0 {
+		return false
+	}
+	if err := db.Model(&system.SysAuthority{}).Where("authority_id IN ?", []uint{888, 9528}).Count(&count).Error; err != nil || count < 2 {
+		return false
+	}
+	return true
 }
 
 func syncAmazonLogisticsPlatforms(db *gorm.DB) error {

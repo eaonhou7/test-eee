@@ -3,6 +3,7 @@ package system
 import (
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/common/response"
+	sysModel "github.com/flipped-aurora/gin-vue-admin/server/model/system"
 	"github.com/flipped-aurora/gin-vue-admin/server/model/system/request"
 	"go.uber.org/zap"
 
@@ -19,7 +20,7 @@ type DBApi struct{}
 // @Success  200   {object}  response.Response{data=string}  "初始化用户数据库"
 // @Router   /init/initdb [post]
 func (i *DBApi) InitDB(c *gin.Context) {
-	if global.GVA_DB != nil {
+	if global.GVA_DB != nil && !databaseNeedsInit() {
 		global.GVA_LOG.Error("已存在数据库配置!")
 		response.FailWithMessage("已存在数据库配置", c)
 		return
@@ -50,10 +51,25 @@ func (i *DBApi) CheckDB(c *gin.Context) {
 		needInit = true
 	)
 
-	if global.GVA_DB != nil {
+	if !databaseNeedsInit() {
 		message = "数据库无需初始化"
 		needInit = false
 	}
 	global.GVA_LOG.Info(message)
 	response.OkWithDetailed(gin.H{"needInit": needInit}, message, c)
+}
+
+func databaseNeedsInit() bool {
+	if global.GVA_DB == nil {
+		return true
+	}
+	if !global.GVA_DB.Migrator().HasTable(&sysModel.SysUser{}) {
+		return true
+	}
+
+	var adminCount int64
+	if err := global.GVA_DB.Model(&sysModel.SysUser{}).Where("username = ?", "admin").Count(&adminCount).Error; err != nil {
+		return true
+	}
+	return adminCount == 0
 }
