@@ -16,6 +16,8 @@ param(
   [string]$AdminPassword = "123456",
   # MySQL 监听端口，默认 3306。
   [int]$MySqlPort = 3306,
+  # Microsoft 官方 VC++ x64 运行库下载地址；有网时脚本会自动下载。
+  [string]$VcRedistUrl = "https://aka.ms/vc14/vc_redist.x64.exe",
   # 跳过 git pull，适合目标机完全离线时使用。
   [switch]$SkipGitPull
 )
@@ -162,24 +164,56 @@ function Test-VcRuntimePresent {
   return $true
 }
 
-# 缺少 VC++ 运行库时，从离线根目录安装 vc_redist.x64.exe。
+# 查找离线根目录里的 VC++ x64 运行库安装包。
+function Find-VcRuntimeInstaller {
+  $installer = Get-ChildItem -LiteralPath $Root -Filter "vc_redist.x64*.exe" -File -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+  if ($installer) {
+    return $installer
+  }
+  return Get-ChildItem -LiteralPath $Root -Filter "VC_redist.x64*.exe" -File -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+}
+
+# 有网时自动下载 Microsoft 官方 VC++ x64 运行库安装包到离线根目录。
+function Download-VcRuntimeInstaller {
+  $downloadPath = Join-Path $Root "vc_redist.x64.exe"
+  Write-DeployLog "downloading Microsoft Visual C++ Redistributable x64 to $downloadPath"
+  try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Invoke-WebRequest -Uri $VcRedistUrl -OutFile $downloadPath -UseBasicParsing
+  } catch {
+    Write-Warning "download failed from $VcRedistUrl: $($_.Exception.Message)"
+    return $null
+  }
+
+  if ((Test-Path -LiteralPath $downloadPath) -and ((Get-Item -LiteralPath $downloadPath).Length -gt 1048576)) {
+    return Get-Item -LiteralPath $downloadPath
+  }
+
+  Write-Warning "downloaded vc_redist.x64.exe is missing or too small"
+  return $null
+}
+
+# 缺少 VC++ 运行库时，优先本地安装；没有本地安装包则尝试官方下载。
 function Ensure-VcRuntime {
   if (Test-VcRuntimePresent) {
     return
   }
 
-  $installer = Get-ChildItem -LiteralPath $Root -Filter "vc_redist.x64*.exe" -File -ErrorAction SilentlyContinue |
-    Select-Object -First 1
+  $installer = Find-VcRuntimeInstaller
   if (-not $installer) {
-    $installer = Get-ChildItem -LiteralPath $Root -Filter "VC_redist.x64*.exe" -File -ErrorAction SilentlyContinue |
-      Select-Object -First 1
+    $installer = Download-VcRuntimeInstaller
   }
   if (-not $installer) {
-    Fail "missing Microsoft Visual C++ Redistributable x64. Put vc_redist.x64.exe under $Root and rerun this script."
+    Fail "missing Microsoft Visual C++ Redistributable x64. Download vc_redist.x64.exe from $VcRedistUrl, put it under $Root, and rerun this script."
   }
 
   Write-DeployLog "installing Microsoft Visual C++ Redistributable x64: $($installer.FullName)"
-  Start-Process -FilePath $installer.FullName -Wait -ArgumentList "/install /quiet /norestart"
+  $process = Start-Process -FilePath $installer.FullName -Wait -PassThru -ArgumentList "/install /quiet /norestart"
+  if (($process.ExitCode -ne 0) -and ($process.ExitCode -ne 3010)) {
+    Write-Warning "VC++ runtime installer exited with code $($process.ExitCode); checking DLLs anyway"
+  }
 
   if (-not (Test-VcRuntimePresent)) {
     Fail "VC++ runtime is still missing after installing $($installer.Name); reboot Windows or install Microsoft Visual C++ Redistributable x64 manually."

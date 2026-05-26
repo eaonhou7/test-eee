@@ -161,7 +161,7 @@ cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
 
 - 把 `PortableGit`、MySQL、Go、Node 临时加入当前 PowerShell 的 `PATH`。
 - 如果 Go 或 Node 缺失，优先使用根目录下的 `go-installer*.msi`、`node-installer*.msi` 静默安装。
-- 如果缺少 MySQL 依赖的 VC++ 运行库，优先使用根目录下的 `vc_redist.x64*.exe` 静默安装。
+- 如果缺少 MySQL 依赖的 VC++ 运行库，优先使用根目录下的 `vc_redist.x64*.exe` 静默安装；找不到本地安装包时会尝试从 Microsoft 官方链接自动下载。
 - 初始化 zip 版 MySQL 的 `data` 目录，启动 MySQL，并把 root 密码设置为 `123456a`。
 - 创建 `amazon_admin` 数据库。
 - 生成并修补 `server\config.local.yaml` 的 MySQL 配置，旧配置会备份到 `tmp\windows-lowmem-deploy`。
@@ -661,7 +661,13 @@ cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
 .\scripts\win-lowmem-deploy.ps1
 ```
 
-如果弹窗提示缺少 `VCRUNTIME140_1.dll`、`VCRUNTIME140.dll` 或 `MSVCP140.dll`，说明 Windows 缺少 Microsoft Visual C++ Redistributable x64。把 `vc_redist.x64.exe` 放到下面目录后重新执行脚本：
+如果弹窗提示缺少 `VCRUNTIME140_1.dll`、`VCRUNTIME140.dll` 或 `MSVCP140.dll`，说明 Windows 缺少 Microsoft Visual C++ Redistributable x64。新版脚本会优先从 Microsoft 官方链接自动下载：
+
+```text
+https://aka.ms/vc14/vc_redist.x64.exe
+```
+
+如果目标机不能联网，请在其他机器下载 `vc_redist.x64.exe`，放到下面目录后重新执行脚本：
 
 ```text
 C:\Users\Administrator\Desktop\eaon\system
