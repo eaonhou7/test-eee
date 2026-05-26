@@ -686,8 +686,8 @@ C:\Users\Administrator\Desktop\eaon\system
 ```powershell
 & C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysql.exe --version
 & C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqld.exe --version
-& C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqladmin.exe --host=127.0.0.1 --port=3306 --user=root ping
-& C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqladmin.exe --host=127.0.0.1 --port=3306 --user=root --password=123456a ping
+& C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqladmin.exe --protocol=TCP --host=127.0.0.1 --port=3306 --user=root ping
+& C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqladmin.exe --protocol=TCP --host=127.0.0.1 --port=3306 --user=root --password=123456a ping
 ```
 
 如果手动安装运行库后仍弹同样错误，重启 Windows 后再运行部署脚本。

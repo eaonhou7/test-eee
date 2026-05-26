@@ -178,6 +178,34 @@ function Show-ExecutableVersion {
   }
 }
 
+# 执行外部命令并返回真实 exit code，避免 PowerShell 把 native stderr warning 当成脚本失败。
+function Invoke-ExternalCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [switch]$Quiet
+  )
+
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    if ($Quiet) {
+      & $Path @Arguments *> $null
+    } else {
+      & $Path @Arguments
+    }
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) {
+      $exitCode = 1
+    }
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  return [int]$exitCode
+}
+
 # 如果 Go/Node 缺失，则从离线根目录里的 MSI 安装包静默安装。
 function Install-MsiWhenCommandMissing {
   param(
@@ -282,18 +310,14 @@ function ConvertTo-SqlLiteral {
 function Test-MySqlPing {
   param([switch]$UsePassword)
   foreach ($hostName in @("127.0.0.1", "localhost")) {
-    $arguments = @("--host=$hostName", "--port=$MySqlPort", "--user=root")
+    $arguments = @("--protocol=TCP", "--host=$hostName", "--port=$MySqlPort", "--user=root")
     if ($UsePassword) {
       $arguments += "--password=$MySqlRootPassword"
     }
     $arguments += "ping"
-    try {
-      & $script:MySqlAdminExe @arguments *> $null
-      if ($LASTEXITCODE -eq 0) {
-        return $true
-      }
-    } catch {
-      # ping 失败时继续尝试下一个 host，最终由调用方统一报错。
+    $exitCode = Invoke-ExternalCommand -Path $script:MySqlAdminExe -Arguments $arguments -Quiet
+    if ($exitCode -eq 0) {
+      return $true
     }
   }
   return $false
@@ -306,19 +330,16 @@ function Invoke-MySqlRootSql {
     [switch]$UsePassword
   )
   foreach ($hostName in @("127.0.0.1", "localhost")) {
-    $arguments = @("--host=$hostName", "--port=$MySqlPort", "--user=root")
+    $arguments = @("--protocol=TCP", "--host=$hostName", "--port=$MySqlPort", "--user=root")
     if ($UsePassword) {
       $arguments += "--password=$MySqlRootPassword"
     }
     $arguments += @("--execute=$Sql")
-    try {
-      & $script:MySqlExe @arguments
-      if ($LASTEXITCODE -eq 0) {
-        return $true
-      }
-    } catch {
-      Write-Warning "mysql command failed on $hostName; trying next host if available"
+    $exitCode = Invoke-ExternalCommand -Path $script:MySqlExe -Arguments $arguments
+    if ($exitCode -eq 0) {
+      return $true
     }
+    Write-Warning "mysql command failed on $hostName with exit code $exitCode; trying next host if available"
   }
   return $false
 }
