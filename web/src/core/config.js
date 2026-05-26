@@ -15,7 +15,7 @@ export const config = {
 
 export const viteLogo = (env) => {
   if (config.showViteLogo) {
-    const serverPort = resolvePort(env.VITE_SERVER_PORT, '8888')
+    const serverPort = resolvePort(env.VITE_SERVER_PORT, '9999')
     const cliPort = resolvePort(env.VITE_CLI_PORT, '8080')
     console.log(
       greenText(

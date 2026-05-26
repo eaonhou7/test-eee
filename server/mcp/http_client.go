@@ -49,7 +49,7 @@ func upstreamBaseURL() string {
 		return strings.TrimRight(baseURL, "/")
 	}
 
-	return "http://127.0.0.1:8888"
+	return "http://127.0.0.1:9999"
 }
 
 func requestTimeout() time.Duration {

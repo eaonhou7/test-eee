@@ -14,6 +14,8 @@ param(
   [string]$MySqlRootPassword = "123456a",
   # GVA 初始化接口使用的后台 admin 密码。
   [string]$AdminPassword = "123456",
+  # Go 后端和静态页面共同使用的端口。
+  [int]$ApiPort = 9999,
   # MySQL 监听端口，默认 3306。
   [int]$MySqlPort = 3306,
   # Microsoft 官方 VC++ x64 运行库下载地址；有网时脚本会自动下载。
@@ -511,7 +513,7 @@ function Ensure-ApplicationDatabase {
   }
 }
 
-# 生成并修补 server\config.local.yaml，只改 MySQL 块里部署必需的字段。
+# 生成并修补 server\config.local.yaml，只改 system.addr 和 MySQL 块里部署必需的字段。
 function Update-LocalConfig {
   $configTemplate = Join-Path $App "server\config.local.example.yaml"
   $configFile = Join-Path $App "server\config.local.yaml"
@@ -528,15 +530,30 @@ function Update-LocalConfig {
   Copy-Item -LiteralPath $configTemplate -Destination $configFile -Force
 
   $lines = Get-Content -LiteralPath $configFile
+  $inSystem = $false
   $inMySql = $false
   $patched = foreach ($line in $lines) {
+    if ($line -match "^system:\s*$") {
+      $inSystem = $true
+      $inMySql = $false
+      $line
+      continue
+    }
     if ($line -match "^mysql:\s*$") {
+      $inSystem = $false
       $inMySql = $true
       $line
       continue
     }
+    if ($inSystem -and $line -match "^[^\s#].*:\s*$") {
+      $inSystem = $false
+    }
     if ($inMySql -and $line -match "^[^\s#].*:\s*$") {
       $inMySql = $false
+    }
+
+    if ($inSystem) {
+      if ($line -match "^\s*addr:") { "    addr: $ApiPort"; continue }
     }
 
     if ($inMySql) {
@@ -593,6 +610,7 @@ function Start-StaticDeployment {
   $env:MYSQL_USER = "root"
   $env:MYSQL_DATABASE = "amazon_admin"
   $env:ADMIN_PASSWORD = $AdminPassword
+  $env:API_PORT = "$ApiPort"
   $env:STATIC_BUILD = "1"
   $env:SERVER_BUILD = "1"
   $env:NODE_OPTIONS = "--max-old-space-size=1536"
@@ -649,7 +667,7 @@ Start-StaticDeployment
 
 Write-Host ""
 Write-Host "Windows low-memory deployment is ready:"
-Write-Host "  Login: http://127.0.0.1:8888/#/login"
+Write-Host "  Login: http://127.0.0.1:$ApiPort/#/login"
 Write-Host "  Username: admin"
 Write-Host "  Password: $AdminPassword"
 Write-Host ""

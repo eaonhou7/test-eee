@@ -2,7 +2,7 @@
 # 低内存静态部署关闭脚本，只处理 static-runtime 下的 Go 后端进程。
 [CmdletBinding()]
 param(
-  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 8888 })
+  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 9999 })
 )
 
 # 严格模式让脚本遇到错误时立即失败。

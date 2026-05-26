@@ -18,7 +18,7 @@ CONFIG_TEMPLATE="${SERVER_DIR}/config.local.example.yaml"
 CONFIG_FILE="${SERVER_DIR}/config.local.yaml"
 
 # 低内存静态部署只暴露一个端口：Go 后端同时提供 API 和前端静态页。
-API_PORT="${API_PORT:-8888}"
+API_PORT="${API_PORT:-9999}"
 # STATIC_BUILD=0 时复用已有 web/dist，适合 2C2G 目标机。
 STATIC_BUILD="${STATIC_BUILD:-1}"
 # SERVER_BUILD=0 时复用已有 Go 二进制，适合提前构建后再迁移。
@@ -146,6 +146,33 @@ ensure_local_config() {
   log "Created server/config.local.yaml from template; edit MySQL settings if needed"
 }
 
+# 保持 config.local.yaml 的 system.addr 和脚本健康检查端口一致。
+sync_api_port_to_local_config() {
+  python3 - "${CONFIG_FILE}" "${API_PORT}" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+api_port = sys.argv[2]
+lines = path.read_text().splitlines()
+patched = []
+in_system = False
+for line in lines:
+    if re.match(r"^system:\s*$", line):
+        in_system = True
+        patched.append(line)
+        continue
+    if in_system and re.match(r"^[^\s#].*:\s*$", line):
+        in_system = False
+    if in_system and re.match(r"^\s*addr:", line):
+        patched.append(f"    addr: {api_port}")
+        continue
+    patched.append(line)
+path.write_text("\n".join(patched) + "\n")
+PY
+}
+
 # 按 package.json 变更判断是否需要重新安装前端依赖。
 ensure_web_dependencies() {
   if [[ -d "${WEB_DIR}/node_modules" && -f "${WEB_DEPS_STAMP}" && ! "${WEB_DIR}/package.json" -nt "${WEB_DEPS_STAMP}" ]]; then
@@ -265,6 +292,7 @@ main() {
   require_cmd python3
 
   ensure_local_config
+  sync_api_port_to_local_config
   build_static_web
   build_server_binary
   start_server

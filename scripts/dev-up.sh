@@ -15,7 +15,7 @@ WEB_DEPS_STAMP="${WEB_DIR}/node_modules/.deps-stamp"
 CONFIG_TEMPLATE="${SERVER_DIR}/config.local.example.yaml"
 CONFIG_FILE="${SERVER_DIR}/config.local.yaml"
 
-API_PORT="${API_PORT:-8888}"
+API_PORT="${API_PORT:-9999}"
 WEB_PORT="${WEB_PORT:-8080}"
 WEB_HOST="${WEB_HOST:-127.0.0.1}"
 MYSQL_HOST="${MYSQL_HOST:-127.0.0.1}"
@@ -323,6 +323,33 @@ ensure_local_config() {
   cp "${CONFIG_TEMPLATE}" "${CONFIG_FILE}"
 }
 
+# 保持 config.local.yaml 的 system.addr 和脚本健康检查端口一致。
+sync_api_port_to_local_config() {
+  python3 - "${CONFIG_FILE}" "${API_PORT}" <<'PY'
+import pathlib
+import re
+import sys
+
+path = pathlib.Path(sys.argv[1])
+api_port = sys.argv[2]
+lines = path.read_text().splitlines()
+patched = []
+in_system = False
+for line in lines:
+    if re.match(r"^system:\s*$", line):
+        in_system = True
+        patched.append(line)
+        continue
+    if in_system and re.match(r"^[^\s#].*:\s*$", line):
+        in_system = False
+    if in_system and re.match(r"^\s*addr:", line):
+        patched.append(f"    addr: {api_port}")
+        continue
+    patched.append(line)
+path.write_text("\n".join(patched) + "\n")
+PY
+}
+
 config_uses_redis() {
   local source_file="${CONFIG_FILE}"
   if [[ ! -f "${source_file}" ]]; then
@@ -503,6 +530,7 @@ main() {
   require_cmd lsof
 
   ensure_local_config
+  sync_api_port_to_local_config
   ensure_formula mysql
   require_cmd mysql
   require_cmd mysqladmin

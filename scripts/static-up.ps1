@@ -2,7 +2,7 @@
 # 低内存静态部署参数：优先读取环境变量，便于 2C2G 机器用 STATIC_BUILD/SERVER_BUILD 跳过构建。
 [CmdletBinding()]
 param(
-  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 8888 }),
+  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 9999 }),
   [string]$MySqlHost = $(if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "127.0.0.1" }),
   [int]$MySqlPort = $(if ($env:MYSQL_PORT) { [int]$env:MYSQL_PORT } else { 3306 }),
   [string]$MySqlUser = $(if ($env:MYSQL_USER) { $env:MYSQL_USER } else { "root" }),
@@ -240,6 +240,29 @@ function Ensure-LocalConfig {
     Copy-Item -LiteralPath $ConfigTemplate -Destination $ConfigFile
     Write-StaticLog "Created server\config.local.yaml from template; edit MySQL settings if needed"
   }
+}
+
+# 保持 config.local.yaml 的 system.addr 和脚本健康检查端口一致。
+function Sync-ApiPortToLocalConfig {
+  $lines = Get-Content -LiteralPath $ConfigFile
+  $inSystem = $false
+  $patched = foreach ($line in $lines) {
+    if ($line -match "^system:\s*$") {
+      $inSystem = $true
+      $line
+      continue
+    }
+    if ($inSystem -and $line -match "^[^\s#].*:\s*$") {
+      $inSystem = $false
+    }
+
+    if ($inSystem -and $line -match "^\s*addr:") {
+      "    addr: $ApiPort"
+      continue
+    }
+    $line
+  }
+  Set-Content -LiteralPath $ConfigFile -Value $patched -Encoding UTF8
 }
 
 # 检查配置里是否启用了 Redis；低内存静态模式默认不迁移/启动 Redis。
@@ -550,6 +573,7 @@ function Write-RuntimeSummary {
 
 # 主流程：准备配置、确认 MySQL、构建/复用资源、启动服务、自动初始化数据库。
 Ensure-LocalConfig
+Sync-ApiPortToLocalConfig
 if ([string]::IsNullOrWhiteSpace($MySqlPassword)) {
   $configuredPassword = Get-ConfigValue -Section "mysql" -Key "password"
   if ([string]::IsNullOrWhiteSpace($configuredPassword)) {

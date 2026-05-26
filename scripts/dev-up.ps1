@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 [CmdletBinding()]
 param(
-  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 8888 }),
+  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 9999 }),
   [int]$WebPort = $(if ($env:WEB_PORT) { [int]$env:WEB_PORT } else { 8080 }),
   [string]$WebHost = $(if ($env:WEB_HOST) { $env:WEB_HOST } else { "127.0.0.1" }),
   [string]$MySqlHost = $(if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "127.0.0.1" }),
@@ -221,6 +221,29 @@ function Ensure-LocalConfig {
   if (-not (Test-Path -LiteralPath $ConfigFile)) {
     Copy-Item -LiteralPath $ConfigTemplate -Destination $ConfigFile
   }
+}
+
+# 保持 config.local.yaml 的 system.addr 和脚本健康检查端口一致。
+function Sync-ApiPortToLocalConfig {
+  $lines = Get-Content -LiteralPath $ConfigFile
+  $inSystem = $false
+  $patched = foreach ($line in $lines) {
+    if ($line -match "^system:\s*$") {
+      $inSystem = $true
+      $line
+      continue
+    }
+    if ($inSystem -and $line -match "^[^\s#].*:\s*$") {
+      $inSystem = $false
+    }
+
+    if ($inSystem -and $line -match "^\s*addr:") {
+      "    addr: $ApiPort"
+      continue
+    }
+    $line
+  }
+  Set-Content -LiteralPath $ConfigFile -Value $patched -Encoding UTF8
 }
 
 function Test-ConfigUsesRedis {
@@ -507,6 +530,7 @@ $script:MySqlAdminCommand = Resolve-RequiredCommand -Names @("mysqladmin.exe", "
 $script:RedisCliCommand = $null
 
 Ensure-LocalConfig
+Sync-ApiPortToLocalConfig
 if ([string]::IsNullOrWhiteSpace($MySqlPassword)) {
   $configuredPassword = Get-ConfigValue -Section "mysql" -Key "password"
   if ([string]::IsNullOrWhiteSpace($configuredPassword)) {

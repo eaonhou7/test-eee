@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PID_DIR="${ROOT_DIR}/tmp/dev-runtime/pids"
-API_PORT="${API_PORT:-8888}"
+API_PORT="${API_PORT:-9999}"
 WEB_PORT="${WEB_PORT:-8080}"
 
 stop_pid() {

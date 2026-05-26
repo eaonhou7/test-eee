@@ -10,7 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-const testMCPServerURL = "http://localhost:8888/sse"
+const testMCPServerURL = "http://localhost:9999/sse"
 
 func newTestMCPClient(t *testing.T) *mcpClient.Client {
 	t.Helper()

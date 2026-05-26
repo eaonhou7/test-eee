@@ -114,7 +114,7 @@ Copy-Item .\server\config.local.example.yaml .\server\config.local.yaml
 ```yaml
 system:
     env: local
-    addr: 8888
+    addr: 9999
     db-type: mysql
     oss-type: local
     use-redis: false
@@ -146,7 +146,7 @@ local:
 该方式不会启动 `npm run dev` / Vite，也不会占用 `8080` 端口。运行时只有：
 
 ```text
-Go 后端 8888 + web\dist 静态文件 + MySQL 8
+Go 后端 9999 + web\dist 静态文件 + MySQL 8
 ```
 
 如果你的 Windows 根目录就是 `C:\Users\Administrator\Desktop\eaon\system`，项目目录是 `test-eee-git`，MySQL root 密码使用 `123456a`，请用“管理员 PowerShell”直接执行：
@@ -195,7 +195,7 @@ cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
 启动成功后打开：
 
 ```text
-http://127.0.0.1:8888/#/login
+http://127.0.0.1:9999/#/login
 ```
 
 默认登录：
@@ -239,7 +239,7 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 启动成功后访问：
 
 ```text
-http://127.0.0.1:8888/#/login
+http://127.0.0.1:9999/#/login
 ```
 
 关闭静态部署：
@@ -273,7 +273,7 @@ $env:STATIC_BUILD = "0"
 
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `API_PORT` | `8888` | 后端和静态页面共同使用的端口 |
+| `API_PORT` | `9999` | 后端和静态页面共同使用的端口 |
 | `MYSQL_HOST` | `127.0.0.1` | MySQL 地址 |
 | `MYSQL_PORT` | `3306` | MySQL 端口 |
 | `MYSQL_USER` | `root` | MySQL 用户 |
@@ -321,8 +321,8 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```text
 Frontend: http://127.0.0.1:8080
 Login: http://127.0.0.1:8080/#/login
-Backend: http://127.0.0.1:8888
-Health: http://127.0.0.1:8888/health
+Backend: http://127.0.0.1:9999
+Health: http://127.0.0.1:9999/health
 ```
 
 默认账号：
@@ -342,7 +342,7 @@ Health: http://127.0.0.1:8888/health
 
 | 环境变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `API_PORT` | `8888` | 后端端口 |
+| `API_PORT` | `9999` | 后端端口 |
 | `WEB_PORT` | `8080` | 前端端口 |
 | `WEB_HOST` | `127.0.0.1` | 前端监听地址 |
 | `MYSQL_HOST` | `127.0.0.1` | MySQL 地址 |
@@ -356,7 +356,7 @@ Health: http://127.0.0.1:8888/health
 
 ```powershell
 $env:MYSQL_PASSWORD = "root密码"
-$env:API_PORT = "8888"
+$env:API_PORT = "9999"
 $env:WEB_PORT = "8080"
 .\scripts\dev-up.ps1
 ```
@@ -402,7 +402,7 @@ go run .
 后端启动后不要关闭这个 PowerShell 窗口。另开一个 PowerShell 验证健康检查：
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8888/health
+Invoke-RestMethod http://127.0.0.1:9999/health
 ```
 
 预期输出：
@@ -414,7 +414,7 @@ ok
 Swagger 地址：
 
 ```text
-http://127.0.0.1:8888/swagger/index.html
+http://127.0.0.1:9999/swagger/index.html
 ```
 
 ## 5. 初始化数据库
@@ -424,7 +424,7 @@ http://127.0.0.1:8888/swagger/index.html
 后端启动后，另开 PowerShell 执行：
 
 ```powershell
-Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
+Invoke-RestMethod -Method Post http://127.0.0.1:9999/init/checkdb
 ```
 
 如果返回数据里 `needInit` 为 `true`，执行初始化：
@@ -442,7 +442,7 @@ $body = @{
 
 Invoke-RestMethod `
   -Method Post `
-  -Uri http://127.0.0.1:8888/init/initdb `
+  -Uri http://127.0.0.1:9999/init/initdb `
   -ContentType "application/json" `
   -Body $body
 ```
@@ -450,7 +450,7 @@ Invoke-RestMethod `
 初始化成功后，再检查一次：
 
 ```powershell
-Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
+Invoke-RestMethod -Method Post http://127.0.0.1:9999/init/checkdb
 ```
 
 预期 `needInit` 为 `false`。默认后台账号：
@@ -464,7 +464,7 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
 
 ## 6. 启动前端
 
-如果已经使用 `.\scripts\static-up.ps1` 启动，前端已经由 Go 后端托管在 `http://127.0.0.1:8888/#/login`，不需要启动 Vite。
+如果已经使用 `.\scripts\static-up.ps1` 启动，前端已经由 Go 后端托管在 `http://127.0.0.1:9999/#/login`，不需要启动 Vite。
 
 如果已经使用 `.\scripts\dev-up.ps1` 启动，脚本已经启动了前端开发服务，通常不需要手动执行本节。
 
@@ -499,7 +499,7 @@ http://127.0.0.1:8080/#/login
 
 ```env
 VITE_CLI_PORT = 8080
-VITE_SERVER_PORT = 8888
+VITE_SERVER_PORT = 9999
 VITE_BASE_API = /api
 VITE_FILE_API = /api
 VITE_BASE_PATH = http://127.0.0.1
@@ -534,8 +534,8 @@ mysqladmin -h127.0.0.1 -P3306 -uroot -p ping
 然后直接验证：
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8888/health
-Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
+Invoke-RestMethod http://127.0.0.1:9999/health
+Invoke-RestMethod -Method Post http://127.0.0.1:9999/init/checkdb
 ```
 
 如果使用开发模式脚本，也可以执行：
@@ -562,8 +562,8 @@ go run .
 另开 PowerShell：
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8888/health
-Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
+Invoke-RestMethod http://127.0.0.1:9999/health
+Invoke-RestMethod -Method Post http://127.0.0.1:9999/init/checkdb
 ```
 
 预期：
@@ -576,7 +576,7 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
 如果使用低内存静态部署，直接打开：
 
 ```text
-http://127.0.0.1:8888/#/login
+http://127.0.0.1:9999/#/login
 ```
 
 如果使用开发脚本启动，直接打开 `http://127.0.0.1:8080/#/login`。如果走手动流程，再执行：
@@ -612,19 +612,19 @@ http://127.0.0.1:8080/#/login
 浏览器打开：
 
 ```text
-http://127.0.0.1:8888/swagger/index.html
+http://127.0.0.1:9999/swagger/index.html
 ```
 
 能看到 Swagger 页面即为通过。
 
 ## 8. 常见问题
 
-### 8.1 端口 8888 或 8080 被占用
+### 8.1 端口 9999 或 8080 被占用
 
 查看占用进程：
 
 ```powershell
-netstat -ano | findstr :8888
+netstat -ano | findstr :9999
 netstat -ano | findstr :8080
 ```
 
@@ -780,7 +780,7 @@ npm install
 
 按顺序检查：
 
-1. `Invoke-RestMethod http://127.0.0.1:8888/health` 是否返回 `ok`。
+1. `Invoke-RestMethod http://127.0.0.1:9999/health` 是否返回 `ok`。
 2. `Test-Path .\web\dist\index.html` 是否返回 `True`。
 3. 查看 `tmp\static-runtime\logs\server.log` 是否有 MySQL 或端口占用报错。
 4. 如果改过 `server\config.local.yaml` 的 `system.addr`，要同步设置 `$env:API_PORT`。
@@ -790,9 +790,9 @@ npm install
 按顺序检查：
 
 1. 后端窗口是否仍在运行。
-2. `Invoke-RestMethod http://127.0.0.1:8888/health` 是否返回 `ok`。
-3. 静态部署时，浏览器地址应为 `http://127.0.0.1:8888/#/login`。
-4. 开发模式时，`web\.env.development` 的 `VITE_SERVER_PORT` 是否等于后端端口 `8888`。
+2. `Invoke-RestMethod http://127.0.0.1:9999/health` 是否返回 `ok`。
+3. 静态部署时，浏览器地址应为 `http://127.0.0.1:9999/#/login`。
+4. 开发模式时，`web\.env.development` 的 `VITE_SERVER_PORT` 是否等于后端端口 `9999`。
 5. 修改 `.env.development` 后必须重启 `npm run dev:fast`。
 
 ### 8.10 上传文件无法访问

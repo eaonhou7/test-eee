@@ -11,7 +11,7 @@ const resolvePort = (value, fallback) => value || fallback
 export default {
   install: (app) => {
     register(app)
-    const serverPort = resolvePort(import.meta.env.VITE_SERVER_PORT, '8888')
+    const serverPort = resolvePort(import.meta.env.VITE_SERVER_PORT, '9999')
     const cliPort = resolvePort(import.meta.env.VITE_CLI_PORT, '8080')
     console.log(`
        欢迎使用 Gin-Vue-Admin

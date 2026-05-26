@@ -41,11 +41,11 @@ mysql:
     password: 你的 MySQL 密码
 ```
 
-默认后端端口是 `8888`：
+默认后端端口是 `9999`：
 
 ```yaml
 system:
-    addr: 8888
+    addr: 9999
 ```
 
 ## 3. 启动静态部署
@@ -76,13 +76,13 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 启动后访问：
 
 ```text
-http://127.0.0.1:8888/#/login
+http://127.0.0.1:9999/#/login
 ```
 
 健康检查：
 
 ```bash
-curl http://127.0.0.1:8888/health
+curl http://127.0.0.1:9999/health
 ```
 
 正常返回：
@@ -150,7 +150,7 @@ $env:SERVER_BUILD = "0"
 |---|---:|---|
 | `STATIC_BUILD` | `1` | 是否执行 `npm run build:static`，设为 `0` 时复用现有 `web/dist` |
 | `SERVER_BUILD` | `1` | 是否检查并构建 Go 二进制 |
-| `API_PORT` | `8888` | 脚本健康检查端口，需要和 `server/config.local.yaml` 的 `system.addr` 一致 |
+| `API_PORT` | `9999` | 脚本健康检查端口，需要和 `server/config.local.yaml` 的 `system.addr` 一致 |
 | `SERVER_READY_TIMEOUT` | `120` | 等待服务启动的秒数 |
 
 脚本会设置：
@@ -166,17 +166,17 @@ GVA_STATIC_ROOT=web/dist
 开发模式：
 
 ```text
-Go 后端 8888 + Vite 前端 8080 + MySQL
+Go 后端 9999 + Vite 前端 8080 + MySQL
 ```
 
 静态部署：
 
 ```text
-Go 后端 8888 同时提供 API 和 web/dist + MySQL
+Go 后端 9999 同时提供 API 和 web/dist + MySQL
 ```
 
 所以静态部署只访问一个端口：
 
 ```text
-http://127.0.0.1:8888/#/login
+http://127.0.0.1:9999/#/login
 ```

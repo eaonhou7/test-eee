@@ -4,7 +4,7 @@ set -euo pipefail
 # 关闭低内存静态部署时，只需要处理 static-runtime 下记录的 Go 后端进程。
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PID_DIR="${ROOT_DIR}/tmp/static-runtime/pids"
-API_PORT="${API_PORT:-8888}"
+API_PORT="${API_PORT:-9999}"
 
 # 按 PID 文件停止静态部署服务。
 stop_pid() {

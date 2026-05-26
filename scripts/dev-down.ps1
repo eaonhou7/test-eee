@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 [CmdletBinding()]
 param(
-  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 8888 }),
+  [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 9999 }),
   [int]$WebPort = $(if ($env:WEB_PORT) { [int]$env:WEB_PORT } else { 8080 })
 )
 
