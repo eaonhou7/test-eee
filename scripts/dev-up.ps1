@@ -136,8 +136,8 @@ function Remove-StalePid {
 function Show-LogExcerpt {
   param([Parameter(Mandatory = $true)][string]$LogFile)
   if (Test-Path -LiteralPath $LogFile) {
-    Write-Error "[dev-up.ps1] recent log from ${LogFile}:"
-    Get-Content -LiteralPath $LogFile -Tail 40 | ForEach-Object { Write-Error $_ }
+    Write-Warning "[dev-up.ps1] recent log from ${LogFile}:"
+    Get-Content -LiteralPath $LogFile -Tail 40 | ForEach-Object { Write-Warning $_ }
   }
 }
 
