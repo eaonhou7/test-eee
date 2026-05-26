@@ -55,7 +55,7 @@ function Show-FileTail {
     [int]$Tail = 80
   )
   if (Test-Path -LiteralPath $Path) {
-    Write-Warning "[win-lowmem-deploy] recent log from $Path:"
+    Write-Warning "[win-lowmem-deploy] recent log from ${Path}:"
     Get-Content -LiteralPath $Path -Tail $Tail | ForEach-Object { Write-Warning $_ }
   }
 }
@@ -235,7 +235,7 @@ function Download-VcRuntimeInstaller {
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-WebRequest -Uri $VcRedistUrl -OutFile $downloadPath -UseBasicParsing
   } catch {
-    Write-Warning "download failed from $VcRedistUrl: $($_.Exception.Message)"
+    Write-Warning "download failed from ${VcRedistUrl}: $($_.Exception.Message)"
     return $null
   }
 
