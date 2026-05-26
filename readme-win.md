@@ -184,6 +184,14 @@ cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
 .\scripts\win-lowmem-deploy.ps1 -MySqlRootPassword "你的 MySQL root 密码"
 ```
 
+如果前几次失败留下了半初始化的 MySQL `data` 目录，并且确认是首次部署、不要保留旧数据库，可以让脚本先备份旧目录再重新初始化：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
+.\scripts\win-lowmem-deploy.ps1 -SkipGitPull -ResetMySqlData
+```
+
 启动成功后打开：
 
 ```text
@@ -682,7 +690,34 @@ C:\Users\Administrator\Desktop\eaon\system
 
 如果手动安装运行库后仍弹同样错误，重启 Windows 后再运行部署脚本。
 
-### 8.4 `GVA_CONFIG` 没有生效
+### 8.4 MySQL 启动失败或 3306 不可用
+
+新版脚本会把 MySQL 初始化和启动日志写到：
+
+```text
+C:\Users\Administrator\Desktop\eaon\system\test-eee-git\tmp\windows-lowmem-deploy\mysql
+```
+
+失败后先看日志：
+
+```powershell
+Get-Content C:\Users\Administrator\Desktop\eaon\system\test-eee-git\tmp\windows-lowmem-deploy\mysql\mysqld.err.log -Tail 80
+Get-Content C:\Users\Administrator\Desktop\eaon\system\test-eee-git\tmp\windows-lowmem-deploy\mysql\mysqld.out.log -Tail 80
+```
+
+检查 3306 是否被占用：
+
+```powershell
+netstat -ano | findstr :3306
+```
+
+如果是首次部署，且前面失败留下了半初始化数据目录，可以备份旧目录并重建：
+
+```powershell
+.\scripts\win-lowmem-deploy.ps1 -SkipGitPull -ResetMySqlData
+```
+
+### 8.5 `GVA_CONFIG` 没有生效
 
 使用 `.\scripts\dev-up.ps1` 启动时，脚本会自动设置 `GVA_CONFIG=config.local.yaml`。
 
@@ -696,7 +731,7 @@ go run .
 
 如果直接执行 `go run .`，后端会默认读取 `config.yaml`。
 
-### 8.5 Go 依赖下载失败
+### 8.6 Go 依赖下载失败
 
 设置代理后重试：
 
@@ -708,7 +743,7 @@ go mod download
 
 如果公司网络限制 HTTPS 访问，需要切换到可访问 Go module 的网络。
 
-### 8.6 npm install 失败
+### 8.7 npm install 失败
 
 清理后重装：
 
@@ -726,7 +761,7 @@ npm config set registry https://registry.npmmirror.com
 npm install
 ```
 
-### 8.7 静态部署访问不了页面
+### 8.8 静态部署访问不了页面
 
 按顺序检查：
 
@@ -735,7 +770,7 @@ npm install
 3. 查看 `tmp\static-runtime\logs\server.log` 是否有 MySQL 或端口占用报错。
 4. 如果改过 `server\config.local.yaml` 的 `system.addr`，要同步设置 `$env:API_PORT`。
 
-### 8.8 前端登录时报接口错误
+### 8.9 前端登录时报接口错误
 
 按顺序检查：
 
@@ -745,7 +780,7 @@ npm install
 4. 开发模式时，`web\.env.development` 的 `VITE_SERVER_PORT` 是否等于后端端口 `8888`。
 5. 修改 `.env.development` 后必须重启 `npm run dev:fast`。
 
-### 8.9 上传文件无法访问
+### 8.10 上传文件无法访问
 
 确认 `server\config.local.yaml`：
 
@@ -762,7 +797,7 @@ cd C:\workspace\test-eee\server
 New-Item -ItemType Directory -Force uploads\file
 ```
 
-### 8.10 Windows 路径导致 YAML 报错
+### 8.11 Windows 路径导致 YAML 报错
 
 在 YAML 里优先使用正斜杠：
 
@@ -778,7 +813,7 @@ logistics:
     yuntu-rate-file: C:\workspace\rates\yuntu.xlsx
 ```
 
-### 8.11 需要重新初始化数据库
+### 8.12 需要重新初始化数据库
 
 如果只是本地测试环境，可以删除数据库后重新走第 5 节：
 

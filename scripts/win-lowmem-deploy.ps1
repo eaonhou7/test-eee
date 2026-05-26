@@ -18,6 +18,8 @@ param(
   [int]$MySqlPort = 3306,
   # Microsoft 官方 VC++ x64 运行库下载地址；有网时脚本会自动下载。
   [string]$VcRedistUrl = "https://aka.ms/vc14/vc_redist.x64.exe",
+  # 备份并重新初始化 MySQL data 目录；仅首次部署或确认不要旧数据时使用。
+  [switch]$ResetMySqlData,
   # 跳过 git pull，适合目标机完全离线时使用。
   [switch]$SkipGitPull
 )
@@ -31,6 +33,7 @@ $App = Join-Path $Root $AppName
 $MySqlHome = Join-Path $Root $MySqlFolderName
 $MySqlData = Join-Path $MySqlHome "data"
 $DeployLogDir = Join-Path $App "tmp\windows-lowmem-deploy"
+$MySqlLogDir = Join-Path $DeployLogDir "mysql"
 
 # 统一部署日志前缀。
 function Write-DeployLog {
@@ -43,6 +46,55 @@ function Fail {
   param([Parameter(Mandatory = $true)][string]$Message)
   Write-Error "[win-lowmem-deploy] $Message"
   exit 1
+}
+
+# 输出日志尾部，避免 MySQL 启动失败时只看到泛化错误。
+function Show-FileTail {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [int]$Tail = 80
+  )
+  if (Test-Path -LiteralPath $Path) {
+    Write-Warning "[win-lowmem-deploy] recent log from $Path:"
+    Get-Content -LiteralPath $Path -Tail $Tail | ForEach-Object { Write-Warning $_ }
+  }
+}
+
+# 判断端口是否已经有监听进程。
+function Test-PortBusy {
+  param([Parameter(Mandatory = $true)][int]$Port)
+  $client = New-Object System.Net.Sockets.TcpClient
+  try {
+    $async = $client.BeginConnect("127.0.0.1", $Port, $null, $null)
+    return [bool]($async.AsyncWaitHandle.WaitOne(300, $false) -and $client.Connected)
+  } catch {
+    return $false
+  } finally {
+    $client.Close()
+  }
+}
+
+# 输出端口监听进程摘要，便于判断是否被已有 MySQL 或其他服务占用。
+function Get-PortListenerSummary {
+  param([Parameter(Mandatory = $true)][int]$Port)
+  if (-not (Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue)) {
+    return "port $Port is in use; run netstat -ano | findstr :$Port"
+  }
+
+  $connections = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+  $summaries = @()
+  foreach ($pidValue in ($connections | Select-Object -ExpandProperty OwningProcess -Unique)) {
+    $process = Get-Process -Id $pidValue -ErrorAction SilentlyContinue
+    if ($process) {
+      $summaries += "$($process.ProcessName) pid=$pidValue"
+    } else {
+      $summaries += "pid=$pidValue"
+    }
+  }
+  if ($summaries.Count -eq 0) {
+    return "unknown listener on port $Port"
+  }
+  return ($summaries -join "; ")
 }
 
 # 把离线目录里的工具路径临时加入当前 PowerShell 的 PATH。
@@ -287,14 +339,61 @@ function Wait-ForMySqlAuthMode {
 }
 
 # 首次使用 zip 版 MySQL 时初始化 data 目录。
+function Test-MySqlDataInitialized {
+  return (
+    (Test-Path -LiteralPath $MySqlData) -and
+    (Test-Path -LiteralPath (Join-Path $MySqlData "mysql")) -and
+    (Test-Path -LiteralPath (Join-Path $MySqlData "auto.cnf"))
+  )
+}
+
+# 备份已有 data 目录，避免直接删除用户数据。
+function Backup-MySqlDataDir {
+  if (-not (Test-Path -LiteralPath $MySqlData)) {
+    return
+  }
+  $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+  $backupPath = Join-Path $MySqlHome "data.bak-$timestamp"
+  Write-DeployLog "backing up MySQL data directory to $backupPath"
+  Move-Item -LiteralPath $MySqlData -Destination $backupPath
+}
+
 function Initialize-MySqlDataIfNeeded {
-  if (Test-Path -LiteralPath $MySqlData) {
+  if ($ResetMySqlData -and (Test-Path -LiteralPath $MySqlData)) {
+    Backup-MySqlDataDir
+  }
+
+  if (Test-MySqlDataInitialized) {
     return
   }
 
+  if (Test-Path -LiteralPath $MySqlData) {
+    Write-Warning "MySQL data directory exists but does not look initialized; backing it up before reinitializing"
+    Backup-MySqlDataDir
+  }
+
   Write-DeployLog "initializing MySQL data directory"
-  & $script:MySqlDaemonExe --initialize-insecure --basedir="$MySqlHome" --datadir="$MySqlData"
-  if ($LASTEXITCODE -ne 0) {
+  $initOutLog = Join-Path $MySqlLogDir "initialize.out.log"
+  $initErrLog = Join-Path $MySqlLogDir "initialize.err.log"
+  Set-Content -LiteralPath $initOutLog -Value "" -Encoding UTF8
+  Set-Content -LiteralPath $initErrLog -Value "" -Encoding UTF8
+
+  $process = Start-Process -FilePath $script:MySqlDaemonExe `
+    -ArgumentList @(
+      "--no-defaults",
+      "--initialize-insecure",
+      "--basedir=$MySqlHome",
+      "--datadir=$MySqlData",
+      "--console"
+    ) `
+    -RedirectStandardOutput $initOutLog `
+    -RedirectStandardError $initErrLog `
+    -Wait `
+    -PassThru
+
+  if ($process.ExitCode -ne 0) {
+    Show-FileTail -Path $initErrLog
+    Show-FileTail -Path $initOutLog
     Fail "mysqld --initialize-insecure failed"
   }
 }
@@ -306,20 +405,49 @@ function Start-PortableMySqlIfNeeded {
     return $authMode
   }
 
+  if (Test-PortBusy -Port $MySqlPort) {
+    Fail "port $MySqlPort is already in use by $(Get-PortListenerSummary -Port $MySqlPort). Stop that process, or rerun with -MySqlPort another port."
+  }
+
   Write-DeployLog "starting portable MySQL"
-  Start-Process -FilePath $script:MySqlDaemonExe -ArgumentList @(
+  $mysqlOutLog = Join-Path $MySqlLogDir "mysqld.out.log"
+  $mysqlErrLog = Join-Path $MySqlLogDir "mysqld.err.log"
+  Set-Content -LiteralPath $mysqlOutLog -Value "" -Encoding UTF8
+  Set-Content -LiteralPath $mysqlErrLog -Value "" -Encoding UTF8
+
+  $mysqlProcess = Start-Process -FilePath $script:MySqlDaemonExe -ArgumentList @(
+    "--no-defaults",
     "--basedir=$MySqlHome",
     "--datadir=$MySqlData",
     "--port=$MySqlPort",
+    "--bind-address=127.0.0.1",
     "--character-set-server=utf8mb4",
-    "--collation-server=utf8mb4_unicode_ci"
-  ) -WindowStyle Hidden | Out-Null
+    "--collation-server=utf8mb4_unicode_ci",
+    "--console"
+  ) `
+    -RedirectStandardOutput $mysqlOutLog `
+    -RedirectStandardError $mysqlErrLog `
+    -WindowStyle Hidden `
+    -PassThru
 
-  $authMode = Wait-ForMySqlAuthMode -Attempts 30
-  if (-not $authMode) {
-    Fail "MySQL did not become ready on 127.0.0.1:$MySqlPort; check whether the port is occupied or root password is different"
+  for ($index = 1; $index -le 45; $index++) {
+    if (Test-MySqlPing -UsePassword) {
+      return "password"
+    }
+    if (Test-MySqlPing) {
+      return "nopassword"
+    }
+    if ($mysqlProcess.HasExited) {
+      Show-FileTail -Path $mysqlErrLog
+      Show-FileTail -Path $mysqlOutLog
+      Fail "mysqld.exe exited before becoming ready; see logs under $MySqlLogDir"
+    }
+    Start-Sleep -Seconds 2
   }
-  return $authMode
+
+  Show-FileTail -Path $mysqlErrLog
+  Show-FileTail -Path $mysqlOutLog
+  Fail "MySQL did not become ready on 127.0.0.1:$MySqlPort; see logs under $MySqlLogDir"
 }
 
 # 确保 root 密码正确，并补齐后端配置需要的 root@127.0.0.1 权限。
@@ -459,6 +587,7 @@ if (-not (Test-Path -LiteralPath $App)) {
 if (-not (Test-Path -LiteralPath $MySqlHome)) {
   Fail "MySQL directory not found: $MySqlHome"
 }
+New-Item -ItemType Directory -Force -Path $DeployLogDir, $MySqlLogDir | Out-Null
 
 Add-PathEntry -PathValue (Join-Path $Root "PortableGit\cmd")
 Add-PathEntry -PathValue (Join-Path $Root "PortableGit\bin")
