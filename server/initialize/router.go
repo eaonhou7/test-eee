@@ -3,6 +3,8 @@ package initialize
 import (
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/flipped-aurora/gin-vue-admin/server/docs"
 	"github.com/flipped-aurora/gin-vue-admin/server/global"
@@ -29,6 +31,92 @@ func (fs justFilesFilesystem) Open(name string) (http.File, error) {
 	}
 
 	return f, nil
+}
+
+// registerStaticWeb 根据 GVA_STATIC_ROOT 开启低内存静态部署，让 Go 后端直接托管 web/dist。
+func registerStaticWeb(Router *gin.Engine) {
+	// 未设置静态目录时保持原有开发/接口模式，不影响已有 API 路由。
+	staticRoot := os.Getenv("GVA_STATIC_ROOT")
+	if staticRoot == "" {
+		return
+	}
+
+	// 统一转成绝对路径，后续做目录边界校验时更可靠。
+	staticRoot, err := filepath.Abs(staticRoot)
+	if err != nil {
+		return
+	}
+
+	// index.html 是前端静态部署入口，不存在就跳过静态托管。
+	indexPath := filepath.Join(staticRoot, "index.html")
+	if !regularFileExists(indexPath) {
+		return
+	}
+
+	// 托管 Vite 构建后的 JS/CSS/图片等静态资源目录。
+	if dirExists(filepath.Join(staticRoot, "assets")) {
+		Router.Static("/assets", filepath.Join(staticRoot, "assets"))
+	}
+	// public/docs 会被 Vite 复制到 dist/docs，这里单独暴露文档资源。
+	if dirExists(filepath.Join(staticRoot, "docs")) {
+		Router.Static("/docs", filepath.Join(staticRoot, "docs"))
+	}
+
+	// 托管 public 目录复制出来的常用根路径文件。
+	for _, fileName := range []string{"favicon.ico", "logo.png"} {
+		filePath := filepath.Join(staticRoot, fileName)
+		if regularFileExists(filePath) {
+			Router.StaticFile("/"+fileName, filePath)
+		}
+	}
+
+	// 根路径直接返回前端入口页。
+	Router.GET("/", func(c *gin.Context) {
+		c.File(indexPath)
+	})
+
+	// 未命中后端 API 或静态文件时，回退到 index.html，支持 Vue hash 路由刷新。
+	Router.NoRoute(func(c *gin.Context) {
+		// 非 GET/HEAD 请求不做前端回退，避免吞掉错误的 API 调用。
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		// 清理请求路径，避免 ../ 这类路径穿越。
+		requestPath := filepath.Clean(strings.TrimPrefix(c.Request.URL.Path, "/"))
+		if requestPath != "." {
+			filePath := filepath.Join(staticRoot, requestPath)
+			// 只允许返回静态根目录内的真实文件。
+			if pathInsideRoot(staticRoot, filePath) && regularFileExists(filePath) {
+				c.File(filePath)
+				return
+			}
+		}
+
+		c.File(indexPath)
+	})
+}
+
+// regularFileExists 判断路径是否存在且是普通文件。
+func regularFileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+// dirExists 判断路径是否存在且是目录。
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
+}
+
+// pathInsideRoot 防止静态文件请求逃逸到 GVA_STATIC_ROOT 之外。
+func pathInsideRoot(root string, path string) bool {
+	relativePath, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(os.PathSeparator))
 }
 
 // 初始化总路由
@@ -109,6 +197,9 @@ func Routers() *gin.Engine {
 
 	// 注册业务路由
 	initBizRouter(PrivateGroup, PublicGroup)
+
+	// API 路由全部注册后再挂静态前端，避免前端回退抢占后端接口。
+	registerStaticWeb(Router)
 
 	global.GVA_ROUTERS = Router.Routes()
 

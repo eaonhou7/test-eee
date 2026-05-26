@@ -9,6 +9,7 @@
     "build": "vite build --mode production",
     "build:release": "vite build --mode production",
     "build:fast": "VITE_ENABLE_LEGACY=false vite build --mode production",
+    "build:static": "vite build --mode static",
     "limit-build": "npm install increase-memory-limit-fixbug cross-env -g && npm run fix-memory-limit && node ./limit && npm run build",
     "preview": "vite preview",
     "fix-memory-limit": "cross-env LIMIT=4096 increase-memory-limit"

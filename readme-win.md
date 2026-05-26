@@ -1,8 +1,8 @@
 # Windows 本地部署指南
 
-本文档用于在 Windows 10/11 上从 0 到 1 启动本项目的本地开发环境。流程采用 Windows 原生 PowerShell，不依赖 WSL2 或 Docker。
+本文档用于在 Windows 10/11 上从 0 到 1 启动本项目的本地环境。流程采用 Windows 原生 PowerShell，不依赖 WSL2 或 Docker。
 
-推荐使用 `scripts\dev-up.ps1` 和 `scripts\dev-down.ps1` 启动/关闭本地开发环境；手动命令保留为排障和备用流程。
+低内存机器优先使用 `scripts\static-up.ps1` 和 `scripts\static-down.ps1`：前端先构建成 `web\dist`，运行时只保留 Go 后端和 MySQL，不常驻 Vite/Node。需要前端热更新开发时，再使用 `scripts\dev-up.ps1` 和 `scripts\dev-down.ps1`。
 
 ## 1. 环境准备
 
@@ -141,9 +141,92 @@ local:
 - Windows 路径建议写成 `C:/path/to/file.xlsx`，比反斜杠更不容易触发 YAML 转义问题。
 - `amazon` 节点的 SP-API 凭据本地首次启动可以留空，授权、同步订单等外部接口功能需要后续再配置真实凭据。
 
-### 4.2 使用脚本启动和关闭（推荐）
+### 4.2 低内存静态部署（2C2G 推荐）
 
-Windows 启动脚本参考 macOS 的 `scripts/dev-up.sh` 实现，会自动完成：
+该方式不会启动 `npm run dev` / Vite，也不会占用 `8080` 端口。运行时只有：
+
+```text
+Go 后端 8888 + web\dist 静态文件 + MySQL 8
+```
+
+首次运行前，如果 MySQL root 密码不是脚本默认值 `123456a`，请先在当前 PowerShell 设置：
+
+```powershell
+$env:MYSQL_PASSWORD = "你的 MySQL root 密码"
+$env:ADMIN_PASSWORD = "123456"
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+在项目根目录执行：
+
+```powershell
+.\scripts\static-up.ps1
+```
+
+脚本会自动完成：
+
+- 检查 MySQL 是否可连接。
+- 按需安装前端依赖。
+- 执行 `npm run build:static` 生成 `web\dist`。
+- 使用 `go build -p 1` 构建后端，降低构建峰值内存。
+- 启动 Go 后端，并由 Go 后端直接托管 `web\dist`。
+- 检查 `/health` 和前端首页。
+- 如果数据库尚未初始化，自动调用 `/init/initdb` 初始化。
+
+启动成功后访问：
+
+```text
+http://127.0.0.1:8888/#/login
+```
+
+关闭静态部署：
+
+```powershell
+.\scripts\static-down.ps1
+```
+
+脚本日志位置：
+
+```text
+tmp\static-runtime\logs\server.log
+```
+
+如果目标 Windows 机器只有 2G 内存，更稳的做法是在开发机先构建好 `web\dist` 和后端二进制，再在目标机复用构建产物：
+
+```powershell
+$env:STATIC_BUILD = "0"
+$env:SERVER_BUILD = "0"
+.\scripts\static-up.ps1
+```
+
+如果只想跳过前端构建，但仍在目标机编译 Go 后端：
+
+```powershell
+$env:STATIC_BUILD = "0"
+.\scripts\static-up.ps1
+```
+
+可用环境变量：
+
+| 环境变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `API_PORT` | `8888` | 后端和静态页面共同使用的端口 |
+| `MYSQL_HOST` | `127.0.0.1` | MySQL 地址 |
+| `MYSQL_PORT` | `3306` | MySQL 端口 |
+| `MYSQL_USER` | `root` | MySQL 用户 |
+| `MYSQL_PASSWORD` | `123456a` 或配置文件中的密码 | MySQL 密码 |
+| `MYSQL_DATABASE` | `amazon_admin` | 初始化数据库名 |
+| `ADMIN_PASSWORD` | `123456` | 初始化后的后台管理员密码 |
+| `STATIC_BUILD` | `1` | 是否执行 `npm run build:static`，设为 `0` 时复用现有 `web\dist` |
+| `SERVER_BUILD` | `1` | 是否检查并构建 Go 二进制，设为 `0` 时优先复用现有 `tmp\static-runtime\bin\gva-server.exe` |
+| `NODE_OPTIONS` | `--max-old-space-size=1536` | 前端构建时的 Node heap 上限 |
+| `GO_BUILD_P` | `1` | Go 构建并发度，值越低构建越省内存但更慢 |
+
+### 4.3 使用开发脚本启动和关闭（需要前端热更新时）
+
+开发脚本参考 macOS 的 `scripts/dev-up.sh` 实现，会同时启动 Go 后端和 Vite 前端开发服务，适合本地开发和前端热更新，但内存占用高于静态部署。
+
+开发脚本会自动完成：
 
 - 复制 `server\config.local.example.yaml` 到 `server\config.local.yaml`，如果本地配置不存在。
 - 检查 MySQL 是否可连接。
@@ -224,7 +307,7 @@ tmp\dev-runtime\logs\web.log
 
 如果脚本失败，优先查看上述日志。
 
-### 4.3 下载 Go 依赖（手动备用）
+### 4.4 下载 Go 依赖（手动备用）
 
 ```powershell
 cd C:\workspace\test-eee\server
@@ -234,7 +317,7 @@ go mod download
 
 如果 Go 提示需要 toolchain，允许它下载，或确认本机 Go 版本不低于项目要求。
 
-### 4.4 运行后端测试（手动备用）
+### 4.5 运行后端测试（手动备用）
 
 ```powershell
 cd C:\workspace\test-eee\server
@@ -244,7 +327,7 @@ go test ./...
 
 测试通过时会看到多个 `ok` 或 `[no test files]`。
 
-### 4.5 启动后端（手动备用）
+### 4.6 启动后端（手动备用）
 
 保持在 `server` 目录：
 
@@ -273,7 +356,7 @@ http://127.0.0.1:8888/swagger/index.html
 
 ## 5. 初始化数据库
 
-如果已经使用 `.\scripts\dev-up.ps1` 启动，脚本会自动检查并初始化数据库，通常不需要手动执行本节。
+如果已经使用 `.\scripts\static-up.ps1` 或 `.\scripts\dev-up.ps1` 启动，脚本会自动检查并初始化数据库，通常不需要手动执行本节。
 
 后端启动后，另开 PowerShell 执行：
 
@@ -317,6 +400,8 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
 如果你在 `adminPassword` 使用了其他密码，登录时以你设置的密码为准。
 
 ## 6. 启动前端
+
+如果已经使用 `.\scripts\static-up.ps1` 启动，前端已经由 Go 后端托管在 `http://127.0.0.1:8888/#/login`，不需要启动 Vite。
 
 如果已经使用 `.\scripts\dev-up.ps1` 启动，脚本已经启动了前端开发服务，通常不需要手动执行本节。
 
@@ -377,10 +462,10 @@ mysqladmin -h127.0.0.1 -P3306 -uroot -p ping
 
 ### 7.2 后端验收
 
-如果使用脚本启动，先执行：
+如果使用低内存静态部署，先执行：
 
 ```powershell
-.\scripts\dev-up.ps1
+.\scripts\static-up.ps1
 ```
 
 然后直接验证：
@@ -388,6 +473,12 @@ mysqladmin -h127.0.0.1 -P3306 -uroot -p ping
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8888/health
 Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
+```
+
+如果使用开发模式脚本，也可以执行：
+
+```powershell
+.\scripts\dev-up.ps1
 ```
 
 如果走手动流程，再执行下面的测试和启动命令。
@@ -419,7 +510,13 @@ Invoke-RestMethod -Method Post http://127.0.0.1:8888/init/checkdb
 
 ### 7.3 前端验收
 
-如果使用脚本启动，直接打开 `http://127.0.0.1:8080/#/login`。如果走手动流程，再执行：
+如果使用低内存静态部署，直接打开：
+
+```text
+http://127.0.0.1:8888/#/login
+```
+
+如果使用开发脚本启动，直接打开 `http://127.0.0.1:8080/#/login`。如果走手动流程，再执行：
 
 ```powershell
 cd C:\workspace\test-eee\web
@@ -474,7 +571,13 @@ netstat -ano | findstr :8080
 taskkill /PID 进程ID /F
 ```
 
-如果使用脚本启动，也可以直接执行：
+如果使用静态部署脚本启动，也可以直接执行：
+
+```powershell
+.\scripts\static-down.ps1
+```
+
+如果使用开发脚本启动，也可以直接执行：
 
 ```powershell
 .\scripts\dev-down.ps1
@@ -538,16 +641,26 @@ npm config set registry https://registry.npmmirror.com
 npm install
 ```
 
-### 8.6 前端登录时报接口错误
+### 8.6 静态部署访问不了页面
+
+按顺序检查：
+
+1. `Invoke-RestMethod http://127.0.0.1:8888/health` 是否返回 `ok`。
+2. `Test-Path .\web\dist\index.html` 是否返回 `True`。
+3. 查看 `tmp\static-runtime\logs\server.log` 是否有 MySQL 或端口占用报错。
+4. 如果改过 `server\config.local.yaml` 的 `system.addr`，要同步设置 `$env:API_PORT`。
+
+### 8.7 前端登录时报接口错误
 
 按顺序检查：
 
 1. 后端窗口是否仍在运行。
 2. `Invoke-RestMethod http://127.0.0.1:8888/health` 是否返回 `ok`。
-3. `web\.env.development` 的 `VITE_SERVER_PORT` 是否等于后端端口 `8888`。
-4. 修改 `.env.development` 后必须重启 `npm run dev:fast`。
+3. 静态部署时，浏览器地址应为 `http://127.0.0.1:8888/#/login`。
+4. 开发模式时，`web\.env.development` 的 `VITE_SERVER_PORT` 是否等于后端端口 `8888`。
+5. 修改 `.env.development` 后必须重启 `npm run dev:fast`。
 
-### 8.7 上传文件无法访问
+### 8.8 上传文件无法访问
 
 确认 `server\config.local.yaml`：
 
@@ -564,7 +677,7 @@ cd C:\workspace\test-eee\server
 New-Item -ItemType Directory -Force uploads\file
 ```
 
-### 8.8 Windows 路径导致 YAML 报错
+### 8.9 Windows 路径导致 YAML 报错
 
 在 YAML 里优先使用正斜杠：
 
@@ -580,7 +693,7 @@ logistics:
     yuntu-rate-file: C:\workspace\rates\yuntu.xlsx
 ```
 
-### 8.9 需要重新初始化数据库
+### 8.10 需要重新初始化数据库
 
 如果只是本地测试环境，可以删除数据库后重新走第 5 节：
 

@@ -180,6 +180,22 @@ swag init
     "go.goroot": null,
 ```
 
+### 2.5 静态部署（低内存推荐）
+
+低内存机器建议使用构建后的 `web/dist` 静态部署，不要在线上常驻运行 Vite 开发服务。
+
+```bash
+./scripts/static-up.sh
+```
+
+停止：
+
+```bash
+./scripts/static-down.sh
+```
+
+详细步骤见 [readme-static.md](./readme-static.md)。
+
 ## 3. 技术选型
 
 - 前端：用基于 [Vue](https://vuejs.org) 的 [Element](https://github.com/ElemeFE/element) 构建基础页面。
