@@ -282,9 +282,9 @@ function ConvertTo-SqlLiteral {
 function Test-MySqlPing {
   param([switch]$UsePassword)
   foreach ($hostName in @("127.0.0.1", "localhost")) {
-    $arguments = @("-h$hostName", "-P$MySqlPort", "-uroot")
+    $arguments = @("--host=$hostName", "--port=$MySqlPort", "--user=root")
     if ($UsePassword) {
-      $arguments += "-p$MySqlRootPassword"
+      $arguments += "--password=$MySqlRootPassword"
     }
     $arguments += "ping"
     try {
@@ -306,11 +306,11 @@ function Invoke-MySqlRootSql {
     [switch]$UsePassword
   )
   foreach ($hostName in @("127.0.0.1", "localhost")) {
-    $arguments = @("-h$hostName", "-P$MySqlPort", "-uroot")
+    $arguments = @("--host=$hostName", "--port=$MySqlPort", "--user=root")
     if ($UsePassword) {
-      $arguments += "-p$MySqlRootPassword"
+      $arguments += "--password=$MySqlRootPassword"
     }
-    $arguments += @("-e", $Sql)
+    $arguments += @("--execute=$Sql")
     try {
       & $script:MySqlExe @arguments
       if ($LASTEXITCODE -eq 0) {
