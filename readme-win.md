@@ -651,7 +651,25 @@ taskkill /PID 进程ID /F
 2. 修改 `server\config.local.yaml` 的 `mysql.password`。
 3. 重启后端。
 
-### 8.3 `GVA_CONFIG` 没有生效
+### 8.3 `mysql.exe --version` 预检失败
+
+新版 `scripts\win-lowmem-deploy.ps1` 会固定使用 `C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysql.exe`，并且不会因为 `mysql.exe --version` 返回非 0 直接停止。请重新拉取脚本后再执行：
+
+```powershell
+cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
+.\scripts\win-lowmem-deploy.ps1
+```
+
+如果后续 MySQL 初始化或 `mysqladmin ping` 仍失败，手动检查：
+
+```powershell
+& C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysql.exe --version
+& C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqld.exe --version
+```
+
+如果弹窗或输出提示缺少 `VCRUNTIME` / `MSVCP`，需要先安装 Microsoft Visual C++ Redistributable x64。
+
+### 8.4 `GVA_CONFIG` 没有生效
 
 使用 `.\scripts\dev-up.ps1` 启动时，脚本会自动设置 `GVA_CONFIG=config.local.yaml`。
 
@@ -665,7 +683,7 @@ go run .
 
 如果直接执行 `go run .`，后端会默认读取 `config.yaml`。
 
-### 8.4 Go 依赖下载失败
+### 8.5 Go 依赖下载失败
 
 设置代理后重试：
 
@@ -677,7 +695,7 @@ go mod download
 
 如果公司网络限制 HTTPS 访问，需要切换到可访问 Go module 的网络。
 
-### 8.5 npm install 失败
+### 8.6 npm install 失败
 
 清理后重装：
 
@@ -695,7 +713,7 @@ npm config set registry https://registry.npmmirror.com
 npm install
 ```
 
-### 8.6 静态部署访问不了页面
+### 8.7 静态部署访问不了页面
 
 按顺序检查：
 
@@ -704,7 +722,7 @@ npm install
 3. 查看 `tmp\static-runtime\logs\server.log` 是否有 MySQL 或端口占用报错。
 4. 如果改过 `server\config.local.yaml` 的 `system.addr`，要同步设置 `$env:API_PORT`。
 
-### 8.7 前端登录时报接口错误
+### 8.8 前端登录时报接口错误
 
 按顺序检查：
 
@@ -714,7 +732,7 @@ npm install
 4. 开发模式时，`web\.env.development` 的 `VITE_SERVER_PORT` 是否等于后端端口 `8888`。
 5. 修改 `.env.development` 后必须重启 `npm run dev:fast`。
 
-### 8.8 上传文件无法访问
+### 8.9 上传文件无法访问
 
 确认 `server\config.local.yaml`：
 
@@ -731,7 +749,7 @@ cd C:\workspace\test-eee\server
 New-Item -ItemType Directory -Force uploads\file
 ```
 
-### 8.9 Windows 路径导致 YAML 报错
+### 8.10 Windows 路径导致 YAML 报错
 
 在 YAML 里优先使用正斜杠：
 
@@ -747,7 +765,7 @@ logistics:
     yuntu-rate-file: C:\workspace\rates\yuntu.xlsx
 ```
 
-### 8.10 需要重新初始化数据库
+### 8.11 需要重新初始化数据库
 
 如果只是本地测试环境，可以删除数据库后重新走第 5 节：
 

@@ -67,12 +67,60 @@ function Resolve-RequiredCommand {
 function Show-CommandVersion {
   param(
     [Parameter(Mandatory = $true)][string[]]$Names,
-    [Parameter(Mandatory = $true)][string[]]$Arguments
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [switch]$AllowFailure
   )
   $commandPath = Resolve-RequiredCommand -Names $Names
-  & $commandPath @Arguments
-  if ($LASTEXITCODE -ne 0) {
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = & $commandPath @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $output = @($_)
+    $exitCode = 1
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  if ($output) {
+    $output | ForEach-Object { Write-Host $_ }
+  }
+  if ($exitCode -ne 0) {
+    if ($AllowFailure) {
+      Write-Warning "version check failed: $($Names -join ' or '); continuing and validating later with runtime checks"
+      return
+    }
     Fail "version check failed: $($Names -join ' or ')"
+  }
+}
+
+# 执行指定 exe 的版本命令；MySQL zip 版优先使用固定路径，避免 PATH 命中错误程序。
+function Show-ExecutableVersion {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [switch]$AllowFailure
+  )
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = & $Path @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $output = @($_)
+    $exitCode = 1
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  if ($output) {
+    $output | ForEach-Object { Write-Host $_ }
+  }
+  if ($exitCode -ne 0) {
+    if ($AllowFailure) {
+      Write-Warning "version check failed: $Path; continuing and validating later with runtime checks"
+      return
+    }
+    Fail "version check failed: $Path"
   }
 }
 
@@ -118,9 +166,13 @@ function Test-MySqlPing {
       $arguments += "-p$MySqlRootPassword"
     }
     $arguments += "ping"
-    & $script:MySqlAdminExe @arguments *> $null
-    if ($LASTEXITCODE -eq 0) {
-      return $true
+    try {
+      & $script:MySqlAdminExe @arguments *> $null
+      if ($LASTEXITCODE -eq 0) {
+        return $true
+      }
+    } catch {
+      # ping 失败时继续尝试下一个 host，最终由调用方统一报错。
     }
   }
   return $false
@@ -138,9 +190,13 @@ function Invoke-MySqlRootSql {
       $arguments += "-p$MySqlRootPassword"
     }
     $arguments += @("-e", $Sql)
-    & $script:MySqlExe @arguments
-    if ($LASTEXITCODE -eq 0) {
-      return $true
+    try {
+      & $script:MySqlExe @arguments
+      if ($LASTEXITCODE -eq 0) {
+        return $true
+      }
+    } catch {
+      Write-Warning "mysql command failed on $hostName; trying next host if available"
     }
   }
   return $false
@@ -344,18 +400,20 @@ Add-PathEntry -PathValue "C:\Program Files\nodejs"
 Install-MsiWhenCommandMissing -CommandName "go" -InstallerFilter "go-installer*.msi" -InstallPath "C:\Program Files\Go\bin"
 Install-MsiWhenCommandMissing -CommandName "node" -InstallerFilter "node-installer*.msi" -InstallPath "C:\Program Files\nodejs"
 
+$script:MySqlExe = Join-Path $MySqlHome "bin\mysql.exe"
+$script:MySqlAdminExe = Join-Path $MySqlHome "bin\mysqladmin.exe"
+$script:MySqlDaemonExe = Join-Path $MySqlHome "bin\mysqld.exe"
+foreach ($mysqlTool in @($script:MySqlExe, $script:MySqlAdminExe, $script:MySqlDaemonExe)) {
+  if (-not (Test-Path -LiteralPath $mysqlTool)) {
+    Fail "missing MySQL tool: $mysqlTool"
+  }
+}
+
 Show-CommandVersion -Names @("git.exe", "git") -Arguments @("--version")
 Show-CommandVersion -Names @("go.exe", "go") -Arguments @("version")
 Show-CommandVersion -Names @("node.exe", "node") -Arguments @("-v")
 Show-CommandVersion -Names @("npm.cmd", "npm") -Arguments @("-v")
-Show-CommandVersion -Names @("mysql.exe", "mysql") -Arguments @("--version")
-
-$script:MySqlExe = Resolve-RequiredCommand -Names @("mysql.exe", "mysql")
-$script:MySqlAdminExe = Resolve-RequiredCommand -Names @("mysqladmin.exe", "mysqladmin")
-$script:MySqlDaemonExe = Join-Path $MySqlHome "bin\mysqld.exe"
-if (-not (Test-Path -LiteralPath $script:MySqlDaemonExe)) {
-  Fail "missing mysqld.exe: $script:MySqlDaemonExe"
-}
+Show-ExecutableVersion -Path $script:MySqlExe -Arguments @("--version") -AllowFailure
 
 Pull-ProjectIfPossible
 Initialize-MySqlDataIfNeeded
