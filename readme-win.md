@@ -149,6 +149,60 @@ local:
 Go 后端 8888 + web\dist 静态文件 + MySQL 8
 ```
 
+如果你的 Windows 根目录就是 `C:\Users\Administrator\Desktop\eaon\system`，项目目录是 `test-eee-git`，MySQL root 密码使用 `123456a`，请用“管理员 PowerShell”直接执行：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
+.\scripts\win-lowmem-deploy.ps1
+```
+
+这个脚本会自动完成：
+
+- 把 `PortableGit`、MySQL、Go、Node 临时加入当前 PowerShell 的 `PATH`。
+- 如果 Go 或 Node 缺失，优先使用根目录下的 `go-installer*.msi`、`node-installer*.msi` 静默安装。
+- 初始化 zip 版 MySQL 的 `data` 目录，启动 MySQL，并把 root 密码设置为 `123456a`。
+- 创建 `amazon_admin` 数据库。
+- 生成并修补 `server\config.local.yaml` 的 MySQL 配置，旧配置会备份到 `tmp\windows-lowmem-deploy`。
+- 设置低内存构建参数：`STATIC_BUILD=1`、`SERVER_BUILD=1`、`NODE_OPTIONS=--max-old-space-size=1536`、`GO_BUILD_P=1`。
+- 调用 `scripts\static-up.ps1` 构建并启动 Go 后端托管的静态站点。
+
+如果目标机完全离线，不想执行 `git pull`，使用：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
+.\scripts\win-lowmem-deploy.ps1 -SkipGitPull
+```
+
+如果 MySQL root 密码不是 `123456a`，使用：
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
+.\scripts\win-lowmem-deploy.ps1 -MySqlRootPassword "你的 MySQL root 密码"
+```
+
+启动成功后打开：
+
+```text
+http://127.0.0.1:8888/#/login
+```
+
+默认登录：
+
+```text
+用户名：admin
+密码：123456
+```
+
+关闭服务：
+
+```powershell
+cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
+.\scripts\static-down.ps1
+```
+
 首次运行前，如果 MySQL root 密码不是脚本默认值 `123456a`，请先在当前 PowerShell 设置：
 
 ```powershell

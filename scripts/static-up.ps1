@@ -1,6 +1,6 @@
 #Requires -Version 5.1
-[CmdletBinding()]
 # 低内存静态部署参数：优先读取环境变量，便于 2C2G 机器用 STATIC_BUILD/SERVER_BUILD 跳过构建。
+[CmdletBinding()]
 param(
   [int]$ApiPort = $(if ($env:API_PORT) { [int]$env:API_PORT } else { 8888 }),
   [string]$MySqlHost = $(if ($env:MYSQL_HOST) { $env:MYSQL_HOST } else { "127.0.0.1" }),
