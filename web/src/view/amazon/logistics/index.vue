@@ -98,6 +98,7 @@
           <div class="mt-3 text-sm font-medium text-slate-700 dark:text-slate-200">{{ card.value?.logistics_provider || '--' }}</div>
           <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">渠道码：{{ card.value?.service_code || '--' }}</div>
           <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">平台：{{ card.value?.platform || '全部' }}</div>
+          <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">时效：{{ card.value?.transit_time || '--' }}</div>
           <div class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ card.value?.channel_name || '暂无结果' }}</div>
           <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">状态：{{ card.value?.price_status || '--' }}</div>
         </article>
