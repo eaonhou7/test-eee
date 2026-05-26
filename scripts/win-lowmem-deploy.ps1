@@ -567,6 +567,10 @@ function Start-StaticDeployment {
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
   $env:MYSQL_PASSWORD = $MySqlRootPassword
+  $env:MYSQL_HOST = "127.0.0.1"
+  $env:MYSQL_PORT = "$MySqlPort"
+  $env:MYSQL_USER = "root"
+  $env:MYSQL_DATABASE = "amazon_admin"
   $env:ADMIN_PASSWORD = $AdminPassword
   $env:STATIC_BUILD = "1"
   $env:SERVER_BUILD = "1"

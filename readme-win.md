@@ -711,6 +711,19 @@ Get-Content C:\Users\Administrator\Desktop\eaon\system\test-eee-git\tmp\windows-
 netstat -ano | findstr :3306
 ```
 
+如果确认占用者是前面部署脚本留下的 `mysqld.exe`，可以停止它后继续使用 3306：
+
+```powershell
+taskkill /PID 进程ID /F
+.\scripts\win-lowmem-deploy.ps1 -SkipGitPull -ResetMySqlData
+```
+
+如果不想停止已有 MySQL，也可以改用 3307：
+
+```powershell
+.\scripts\win-lowmem-deploy.ps1 -SkipGitPull -ResetMySqlData -MySqlPort 3307
+```
+
 如果是首次部署，且前面失败留下了半初始化数据目录，可以备份旧目录并重建：
 
 ```powershell
