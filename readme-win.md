@@ -161,6 +161,7 @@ cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
 
 - 把 `PortableGit`、MySQL、Go、Node 临时加入当前 PowerShell 的 `PATH`。
 - 如果 Go 或 Node 缺失，优先使用根目录下的 `go-installer*.msi`、`node-installer*.msi` 静默安装。
+- 如果缺少 MySQL 依赖的 VC++ 运行库，优先使用根目录下的 `vc_redist.x64*.exe` 静默安装。
 - 初始化 zip 版 MySQL 的 `data` 目录，启动 MySQL，并把 root 密码设置为 `123456a`。
 - 创建 `amazon_admin` 数据库。
 - 生成并修补 `server\config.local.yaml` 的 MySQL 配置，旧配置会备份到 `tmp\windows-lowmem-deploy`。
@@ -660,14 +661,20 @@ cd C:\Users\Administrator\Desktop\eaon\system\test-eee-git
 .\scripts\win-lowmem-deploy.ps1
 ```
 
-如果后续 MySQL 初始化或 `mysqladmin ping` 仍失败，手动检查：
+如果弹窗提示缺少 `VCRUNTIME140_1.dll`、`VCRUNTIME140.dll` 或 `MSVCP140.dll`，说明 Windows 缺少 Microsoft Visual C++ Redistributable x64。把 `vc_redist.x64.exe` 放到下面目录后重新执行脚本：
+
+```text
+C:\Users\Administrator\Desktop\eaon\system
+```
+
+脚本会自动静默安装该运行库。如果后续 MySQL 初始化或 `mysqladmin ping` 仍失败，手动检查：
 
 ```powershell
 & C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysql.exe --version
 & C:\Users\Administrator\Desktop\eaon\system\mysql-8.0.46-winx64\bin\mysqld.exe --version
 ```
 
-如果弹窗或输出提示缺少 `VCRUNTIME` / `MSVCP`，需要先安装 Microsoft Visual C++ Redistributable x64。
+如果手动安装运行库后仍弹同样错误，重启 Windows 后再运行部署脚本。
 
 ### 8.4 `GVA_CONFIG` 没有生效
 

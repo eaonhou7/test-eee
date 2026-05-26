@@ -151,6 +151,41 @@ function Install-MsiWhenCommandMissing {
   }
 }
 
+# 检查 MySQL 8 zip 版依赖的 VC++ x64 运行库是否存在。
+function Test-VcRuntimePresent {
+  $system32 = Join-Path $env:WINDIR "System32"
+  foreach ($dllName in @("VCRUNTIME140.dll", "VCRUNTIME140_1.dll", "MSVCP140.dll")) {
+    if (-not (Test-Path -LiteralPath (Join-Path $system32 $dllName))) {
+      return $false
+    }
+  }
+  return $true
+}
+
+# 缺少 VC++ 运行库时，从离线根目录安装 vc_redist.x64.exe。
+function Ensure-VcRuntime {
+  if (Test-VcRuntimePresent) {
+    return
+  }
+
+  $installer = Get-ChildItem -LiteralPath $Root -Filter "vc_redist.x64*.exe" -File -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+  if (-not $installer) {
+    $installer = Get-ChildItem -LiteralPath $Root -Filter "VC_redist.x64*.exe" -File -ErrorAction SilentlyContinue |
+      Select-Object -First 1
+  }
+  if (-not $installer) {
+    Fail "missing Microsoft Visual C++ Redistributable x64. Put vc_redist.x64.exe under $Root and rerun this script."
+  }
+
+  Write-DeployLog "installing Microsoft Visual C++ Redistributable x64: $($installer.FullName)"
+  Start-Process -FilePath $installer.FullName -Wait -ArgumentList "/install /quiet /norestart"
+
+  if (-not (Test-VcRuntimePresent)) {
+    Fail "VC++ runtime is still missing after installing $($installer.Name); reboot Windows or install Microsoft Visual C++ Redistributable x64 manually."
+  }
+}
+
 # 用单引号生成 SQL 字符串字面量，避免密码里出现单引号时 SQL 语法错误。
 function ConvertTo-SqlLiteral {
   param([AllowEmptyString()][Parameter(Mandatory = $true)][string]$Value)
@@ -399,6 +434,7 @@ Add-PathEntry -PathValue "C:\Program Files\nodejs"
 
 Install-MsiWhenCommandMissing -CommandName "go" -InstallerFilter "go-installer*.msi" -InstallPath "C:\Program Files\Go\bin"
 Install-MsiWhenCommandMissing -CommandName "node" -InstallerFilter "node-installer*.msi" -InstallPath "C:\Program Files\nodejs"
+Ensure-VcRuntime
 
 $script:MySqlExe = Join-Path $MySqlHome "bin\mysql.exe"
 $script:MySqlAdminExe = Join-Path $MySqlHome "bin\mysqladmin.exe"
