@@ -77,6 +77,33 @@ function ConvertTo-PSLiteral {
   return "'" + ($Value -replace "'", "''") + "'"
 }
 
+# 执行外部命令并返回真实 exit code，避免 mysqladmin 的 stderr warning 中断脚本。
+function Invoke-ExternalCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [switch]$Quiet
+  )
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    if ($Quiet) {
+      & $Path @Arguments *> $null
+    } else {
+      & $Path @Arguments
+    }
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) {
+      $exitCode = 1
+    }
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  return [int]$exitCode
+}
+
 # 从 config.local.yaml 读取简单的 section/key 值，用于自动获取 MySQL 密码。
 function Get-ConfigValue {
   param(
@@ -228,13 +255,13 @@ function Test-ConfigUsesRedis {
 
 # 使用 mysqladmin ping 验证 MySQL 是否可连接。
 function Test-MySqlReady {
-  $arguments = @("--protocol=TCP", "-h", $MySqlHost, "-P", "$MySqlPort", "-u", $MySqlUser)
+  $arguments = @("--protocol=TCP", "--host=$MySqlHost", "--port=$MySqlPort", "--user=$MySqlUser")
   if (-not [string]::IsNullOrEmpty($MySqlPassword)) {
-    $arguments += "-p$MySqlPassword"
+    $arguments += "--password=$MySqlPassword"
   }
   $arguments += "ping"
-  & $script:MySqlAdminCommand @arguments *> $null
-  return ($LASTEXITCODE -eq 0)
+  $exitCode = Invoke-ExternalCommand -Path $script:MySqlAdminCommand -Arguments $arguments -Quiet
+  return ($exitCode -eq 0)
 }
 
 # 如果本机存在 MySQL Windows 服务，尝试启动它。

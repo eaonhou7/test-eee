@@ -62,6 +62,32 @@ function ConvertTo-PSLiteral {
   return "'" + ($Value -replace "'", "''") + "'"
 }
 
+function Invoke-ExternalCommand {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [switch]$Quiet
+  )
+  $previousErrorActionPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    if ($Quiet) {
+      & $Path @Arguments *> $null
+    } else {
+      & $Path @Arguments
+    }
+    $exitCode = $LASTEXITCODE
+  } catch {
+    $exitCode = $LASTEXITCODE
+    if ($null -eq $exitCode) {
+      $exitCode = 1
+    }
+  } finally {
+    $ErrorActionPreference = $previousErrorActionPreference
+  }
+  return [int]$exitCode
+}
+
 function Get-ConfigValue {
   param(
     [Parameter(Mandatory = $true)][string]$Section,
@@ -208,13 +234,13 @@ function Test-ConfigUsesRedis {
 }
 
 function Test-MySqlReady {
-  $arguments = @("--protocol=TCP", "-h", $MySqlHost, "-P", "$MySqlPort", "-u", $MySqlUser)
+  $arguments = @("--protocol=TCP", "--host=$MySqlHost", "--port=$MySqlPort", "--user=$MySqlUser")
   if (-not [string]::IsNullOrEmpty($MySqlPassword)) {
-    $arguments += "-p$MySqlPassword"
+    $arguments += "--password=$MySqlPassword"
   }
   $arguments += "ping"
-  & $script:MySqlAdminCommand @arguments *> $null
-  return ($LASTEXITCODE -eq 0)
+  $exitCode = Invoke-ExternalCommand -Path $script:MySqlAdminCommand -Arguments $arguments -Quiet
+  return ($exitCode -eq 0)
 }
 
 function Start-MySqlServicesIfPresent {
