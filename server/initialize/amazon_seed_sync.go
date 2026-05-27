@@ -31,6 +31,12 @@ type amazonAPISeed struct {
 	Description string
 }
 
+var amazonLegacyAuthorityIDs = []uint{888, 9528}
+
+var amazonFinanceQuestionAuthorityNames = []string{"管理员", "超级管理员"}
+
+var amazonFinanceQuestionMenuNames = []string{"amazonFinanceCenter", "amazonFinanceQuestionManager"}
+
 var amazonSystemRootSorts = map[string]int{
 	"https://www.gin-vue-admin.com": 20,
 	"dashboard":                     1,
@@ -67,6 +73,7 @@ var amazonLeafRootNames = map[string]string{
 	"amazonFinanceArapManager":       "amazonFinanceCenter",
 	"amazonFinanceReportManager":     "amazonFinanceCenter",
 	"amazonFinanceFxManager":         "amazonFinanceCenter",
+	"amazonFinanceQuestionManager":   "amazonFinanceCenter",
 }
 
 func syncAmazonSeeds(db *gorm.DB) error {
@@ -95,6 +102,9 @@ func syncAmazonSeeds(db *gorm.DB) error {
 		return err
 	}
 	if err := assignAmazonMenus(db); err != nil {
+		return err
+	}
+	if err := ensureFinanceQuestionAccess(db); err != nil {
 		return err
 	}
 	if err := ensureDashboardAccessPolicies(db); err != nil {
@@ -188,6 +198,7 @@ func amazonMenuSeeds() []amazonMenuSeed {
 		{Name: "amazonFinanceArapManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeArap", Component: "view/amazon/financeArap/index.vue", Sort: 4, Title: "应收应付", Icon: "money"},
 		{Name: "amazonFinanceReportManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeReports", Component: "view/amazon/financeReports/index.vue", Sort: 5, Title: "利润报表", Icon: "histogram"},
 		{Name: "amazonFinanceFxManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeFx", Component: "view/amazon/financeFx/index.vue", Sort: 6, Title: "汇率管理", Icon: "money"},
+		{Name: "amazonFinanceQuestionManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeQuestions", Component: "view/amazon/financeQuestions/index.vue", Sort: 7, Title: "问题列表", Icon: "question-filled"},
 	}
 }
 
@@ -287,6 +298,9 @@ func amazonAPISeeds() []amazonAPISeed {
 		{Group: "Amazon财务汇率", Method: "POST", Path: "/amazonFinanceFx/list", Description: "查询 Amazon 财务汇率"},
 		{Group: "Amazon财务汇率", Method: "POST", Path: "/amazonFinanceFx/saveOverride", Description: "保存 Amazon 财务汇率覆盖"},
 		{Group: "Amazon财务汇率", Method: "POST", Path: "/amazonFinanceFx/refreshDailyRates", Description: "立即刷新 Amazon 财务汇率"},
+		{Group: "Amazon财务问题", Method: "POST", Path: "/amazonFinanceQuestion/list", Description: "查询 Amazon 财务问题列表"},
+		{Group: "Amazon财务问题", Method: "GET", Path: "/amazonFinanceQuestion/find", Description: "查询 Amazon 财务问题详情"},
+		{Group: "Amazon财务问题", Method: "POST", Path: "/amazonFinanceQuestion/save", Description: "保存 Amazon 财务问题"},
 		{Group: "Amazon财务成本账单", Method: "POST", Path: "/amazonFinanceCostBill/list", Description: "查询 Amazon 财务成本账单"},
 		{Group: "Amazon财务成本账单", Method: "GET", Path: "/amazonFinanceCostBill/find", Description: "查询 Amazon 财务成本账单详情"},
 		{Group: "Amazon财务成本账单", Method: "POST", Path: "/amazonFinanceCostBill/save", Description: "保存 Amazon 财务成本账单"},
@@ -361,6 +375,7 @@ func amazonLeafMenuNames() []string {
 		"amazonFinanceArapManager",
 		"amazonFinanceReportManager",
 		"amazonFinanceFxManager",
+		"amazonFinanceQuestionManager",
 	}
 }
 
@@ -438,28 +453,7 @@ func upsertAmazonAPIs(db *gorm.DB, seeds []amazonAPISeed) error {
 }
 
 func upsertAmazonPolicies(db *gorm.DB, seeds []amazonAPISeed) error {
-	for _, authorityID := range []uint{888, 9528} {
-		for _, seed := range seeds {
-			var rule adapter.CasbinRule
-			err := db.Where("ptype = 'p' AND v0 = ? AND v1 = ? AND v2 = ?", strconv.Itoa(int(authorityID)), seed.Path, seed.Method).First(&rule).Error
-			if err == nil {
-				continue
-			}
-			if err != gorm.ErrRecordNotFound {
-				return err
-			}
-			rule = adapter.CasbinRule{
-				Ptype: "p",
-				V0:    strconv.Itoa(int(authorityID)),
-				V1:    seed.Path,
-				V2:    seed.Method,
-			}
-			if err := db.Create(&rule).Error; err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+	return ensureAmazonPoliciesForAuthorities(db, amazonLegacyAuthorityIDs, seeds)
 }
 
 func assignAmazonMenus(db *gorm.DB) error {
@@ -505,6 +499,89 @@ func ensureAuthorityMenuAccess(db *gorm.DB, authorityID uint, menus []system.Sys
 		return nil
 	}
 	return db.Model(&authority).Association("SysBaseMenus").Append(&appendMenus)
+}
+
+func ensureFinanceQuestionAccess(db *gorm.DB) error {
+	authorityIDs, err := amazonFinanceQuestionAuthorityIDs(db)
+	if err != nil {
+		return err
+	}
+	if len(authorityIDs) == 0 {
+		return nil
+	}
+	if err := ensureAuthorityMenuAccessByNames(db, authorityIDs, amazonFinanceQuestionMenuNames); err != nil {
+		return err
+	}
+	return ensureAmazonPoliciesForAuthorities(db, authorityIDs, amazonFinanceQuestionAPISeeds())
+}
+
+func amazonFinanceQuestionAuthorityIDs(db *gorm.DB) ([]uint, error) {
+	var authorities []system.SysAuthority
+	if err := db.
+		Where("authority_id IN ? OR authority_name IN ?", amazonLegacyAuthorityIDs, amazonFinanceQuestionAuthorityNames).
+		Find(&authorities).Error; err != nil {
+		return nil, err
+	}
+	seen := map[uint]struct{}{}
+	ids := make([]uint, 0, len(authorities))
+	for _, authority := range authorities {
+		if _, ok := seen[authority.AuthorityId]; ok {
+			continue
+		}
+		seen[authority.AuthorityId] = struct{}{}
+		ids = append(ids, authority.AuthorityId)
+	}
+	return ids, nil
+}
+
+func ensureAuthorityMenuAccessByNames(db *gorm.DB, authorityIDs []uint, menuNames []string) error {
+	var menus []system.SysBaseMenu
+	if err := db.Where("name IN ?", menuNames).Find(&menus).Error; err != nil {
+		return err
+	}
+	if len(menus) == 0 {
+		return nil
+	}
+	for _, authorityID := range authorityIDs {
+		if err := ensureAuthorityMenuAccess(db, authorityID, menus); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ensureAmazonPoliciesForAuthorities(db *gorm.DB, authorityIDs []uint, seeds []amazonAPISeed) error {
+	for _, authorityID := range authorityIDs {
+		authorityIDString := strconv.Itoa(int(authorityID))
+		for _, seed := range seeds {
+			var rule adapter.CasbinRule
+			err := db.Where("ptype = 'p' AND v0 = ? AND v1 = ? AND v2 = ?", authorityIDString, seed.Path, seed.Method).First(&rule).Error
+			if err == nil {
+				continue
+			}
+			if err != gorm.ErrRecordNotFound {
+				return err
+			}
+			rule = adapter.CasbinRule{
+				Ptype: "p",
+				V0:    authorityIDString,
+				V1:    seed.Path,
+				V2:    seed.Method,
+			}
+			if err := db.Create(&rule).Error; err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func amazonFinanceQuestionAPISeeds() []amazonAPISeed {
+	return []amazonAPISeed{
+		{Method: "POST", Path: "/amazonFinanceQuestion/list"},
+		{Method: "GET", Path: "/amazonFinanceQuestion/find"},
+		{Method: "POST", Path: "/amazonFinanceQuestion/save"},
+	}
 }
 
 func ensureAmazonRootAccessForLeafAuthorities(db *gorm.DB, menuByName map[string]system.SysBaseMenu) error {

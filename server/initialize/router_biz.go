@@ -26,6 +26,7 @@ func initBizRouter(routers ...*gin.RouterGroup) {
 	amazonRouter.InitAmazonFinanceReportRouter(privateGroup)
 	amazonRouter.InitAmazonFinanceARAPRouter(privateGroup)
 	amazonRouter.InitAmazonFinanceFXRouter(privateGroup)
+	amazonRouter.InitAmazonFinanceQuestionRouter(privateGroup)
 	amazonRouter.InitAmazonLogisticsLibraryRouter(privateGroup)
 	amazonRouter.InitAmazonLogisticsRouter(privateGroup)
 	amazonRouter.InitAmazonTemplateRouter(privateGroup)

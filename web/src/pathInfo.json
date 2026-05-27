@@ -6,6 +6,7 @@
   "/src/view/amazon/financeCostBills/index.vue": "AmazonFinanceCostBills",
   "/src/view/amazon/financeDashboard/index.vue": "AmazonFinanceDashboard",
   "/src/view/amazon/financeFx/index.vue": "AmazonFinanceFx",
+  "/src/view/amazon/financeQuestions/index.vue": "AmazonFinanceQuestionManager",
   "/src/view/amazon/financeReports/index.vue": "AmazonFinanceReports",
   "/src/view/amazon/financeSettlements/index.vue": "AmazonFinanceSettlements",
   "/src/view/amazon/listingSyncJobs/detail.vue": "AmazonListingSyncJobDetail",

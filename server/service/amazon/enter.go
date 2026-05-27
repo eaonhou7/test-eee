@@ -9,6 +9,7 @@ type ServiceGroup struct {
 	FinanceReportService
 	FinanceARAPService
 	FinanceFXService
+	FinanceQuestionService
 	FinanceRecalcService
 	LogisticsQuoteService
 	LogisticsLibraryService

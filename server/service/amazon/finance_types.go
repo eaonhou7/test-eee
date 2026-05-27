@@ -100,6 +100,22 @@ type FinanceFXRefreshResult struct {
 	Errors             []string `json:"errors,omitempty"`
 }
 
+type FinanceQuestionDetail struct {
+	ID           uint   `json:"id"`
+	Title        string `json:"title"`
+	QuestionType string `json:"questionType"`
+	ContentHTML  string `json:"contentHtml"`
+	CreatedAt    string `json:"createdAt,omitempty"`
+	UpdatedAt    string `json:"updatedAt,omitempty"`
+}
+
+type FinanceQuestionPageResult struct {
+	List     []FinanceQuestionDetail `json:"list"`
+	Total    int64                   `json:"total"`
+	Page     int                     `json:"page"`
+	PageSize int                     `json:"pageSize"`
+}
+
 type FinanceCostBillLineDetail struct {
 	ID                uint    `json:"id"`
 	OrderID           *uint   `json:"orderId,omitempty"`

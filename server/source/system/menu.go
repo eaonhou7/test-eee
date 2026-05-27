@@ -193,6 +193,7 @@ func initChildMenuSeeds() []initMenuSeed {
 		{Name: "amazonFinanceArapManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeArap", Component: "view/amazon/financeArap/index.vue", Sort: 4, Meta: Meta{Title: "应收应付", Icon: "money"}},
 		{Name: "amazonFinanceReportManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeReports", Component: "view/amazon/financeReports/index.vue", Sort: 5, Meta: Meta{Title: "利润报表", Icon: "histogram"}},
 		{Name: "amazonFinanceFxManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeFx", Component: "view/amazon/financeFx/index.vue", Sort: 6, Meta: Meta{Title: "汇率管理", Icon: "money"}},
+		{Name: "amazonFinanceQuestionManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeQuestions", Component: "view/amazon/financeQuestions/index.vue", Sort: 7, Meta: Meta{Title: "问题列表", Icon: "question-filled"}},
 	}
 }
 

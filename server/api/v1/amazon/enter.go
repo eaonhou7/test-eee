@@ -11,6 +11,7 @@ type ApiGroup struct {
 	FinanceReportApi
 	FinanceARAPApi
 	FinanceFXApi
+	FinanceQuestionApi
 	LogisticsQuoteApi
 	LogisticsLibraryApi
 	TemplateApi
@@ -40,6 +41,7 @@ var amazonFinanceCostBillService = service.ServiceGroupApp.AmazonServiceGroup.Fi
 var amazonFinanceReportService = service.ServiceGroupApp.AmazonServiceGroup.FinanceReportService
 var amazonFinanceARAPService = service.ServiceGroupApp.AmazonServiceGroup.FinanceARAPService
 var amazonFinanceFXService = service.ServiceGroupApp.AmazonServiceGroup.FinanceFXService
+var amazonFinanceQuestionService = service.ServiceGroupApp.AmazonServiceGroup.FinanceQuestionService
 var logisticsQuoteService = service.ServiceGroupApp.AmazonServiceGroup.LogisticsQuoteService
 var logisticsLibraryService = service.ServiceGroupApp.AmazonServiceGroup.LogisticsLibraryService
 var amazonTemplateService = service.ServiceGroupApp.AmazonServiceGroup.TemplateService

@@ -11,6 +11,7 @@ type RouterGroup struct {
 	FinanceReportRouter
 	FinanceARAPRouter
 	FinanceFXRouter
+	FinanceQuestionRouter
 	LogisticsQuoteRouter
 	LogisticsLibraryRouter
 	TemplateRouter
@@ -40,6 +41,7 @@ var amazonFinanceCostBillApi = api.ApiGroupApp.AmazonApiGroup.FinanceCostBillApi
 var amazonFinanceReportApi = api.ApiGroupApp.AmazonApiGroup.FinanceReportApi
 var amazonFinanceARAPApi = api.ApiGroupApp.AmazonApiGroup.FinanceARAPApi
 var amazonFinanceFXApi = api.ApiGroupApp.AmazonApiGroup.FinanceFXApi
+var amazonFinanceQuestionApi = api.ApiGroupApp.AmazonApiGroup.FinanceQuestionApi
 var amazonLogisticsApi = api.ApiGroupApp.AmazonApiGroup.LogisticsQuoteApi
 var amazonLogisticsLibraryApi = api.ApiGroupApp.AmazonApiGroup.LogisticsLibraryApi
 var amazonTemplateApi = api.ApiGroupApp.AmazonApiGroup.TemplateApi

@@ -20,6 +20,7 @@ func BusinessModels() []interface{} {
 		&FinanceReceivable{},
 		&FinancePayable{},
 		&FinancePaymentRecord{},
+		&FinanceQuestion{},
 		&FinanceRecalcJob{},
 		&LogisticsUploadBatch{},
 		&LogisticsChannelVersion{},

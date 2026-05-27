@@ -65,6 +65,23 @@ type FinanceFindReq struct {
 	ID uint `json:"id" form:"id"`
 }
 
+type FinanceQuestionListReq struct {
+	commonReq.PageInfo
+	Title        string `json:"title" form:"title"`
+	QuestionType string `json:"questionType" form:"questionType"`
+}
+
+type FinanceQuestionFindReq struct {
+	ID uint `json:"id" form:"id"`
+}
+
+type FinanceQuestionSaveReq struct {
+	ID           uint   `json:"id"`
+	Title        string `json:"title"`
+	QuestionType string `json:"questionType"`
+	ContentHTML  string `json:"contentHtml"`
+}
+
 type FinanceSettlementLineInput struct {
 	PostedAt          string  `json:"postedAt"`
 	TransactionType   string  `json:"transactionType"`
