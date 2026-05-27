@@ -115,7 +115,7 @@ func initRootMenuSeeds() []initMenuSeed {
 		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Meta: Meta{Title: "财务中心", Icon: "data-analysis"}},
 		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 18, Hidden: true, Meta: Meta{Title: "Amazon 工具", Icon: "goods"}},
 		{Name: "https://www.gin-vue-admin.com", MenuLevel: 0, Path: "https://www.gin-vue-admin.com", Component: "/", Sort: 20, Meta: Meta{Title: "官方网站", Icon: "customer-gva"}},
-		{Name: "dashboard", MenuLevel: 0, Path: "dashboard", Component: "view/dashboard/index.vue", Sort: 21, Meta: Meta{Title: "仪表盘", Icon: "odometer"}},
+		{Name: "dashboard", MenuLevel: 0, Path: "dashboard", Component: "view/dashboard/index.vue", Sort: 1, Meta: Meta{Title: "仪表盘", Icon: "odometer"}},
 		{Name: "superAdmin", MenuLevel: 0, Path: "admin", Component: "view/superAdmin/index.vue", Sort: 22, Meta: Meta{Title: "超级管理员", Icon: "user"}},
 		{Name: "systemTools", MenuLevel: 0, Path: "systemTools", Component: "view/systemTools/index.vue", Sort: 23, Meta: Meta{Title: "编程辅助", Icon: "tools"}},
 		{Name: "plugin", MenuLevel: 0, Path: "plugin", Component: "view/routerHolder.vue", Sort: 24, Meta: Meta{Title: "插件系统", Icon: "cherry"}},

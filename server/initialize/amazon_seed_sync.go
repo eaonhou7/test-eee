@@ -33,7 +33,7 @@ type amazonAPISeed struct {
 
 var amazonSystemRootSorts = map[string]int{
 	"https://www.gin-vue-admin.com": 20,
-	"dashboard":                     21,
+	"dashboard":                     1,
 	"superAdmin":                    22,
 	"systemTools":                   23,
 	"plugin":                        24,
