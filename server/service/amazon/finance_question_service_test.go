@@ -81,6 +81,9 @@ func TestFinanceQuestionListFiltersByTitleAndType(t *testing.T) {
 	if typeResult.Total != 1 || typeResult.List[0].Title != "店铺创建资料" {
 		t.Fatalf("unexpected type result: %+v", typeResult)
 	}
+	if !containsString(typeResult.Types, "店铺创建") || !containsString(typeResult.Types, "收款账户") {
+		t.Fatalf("expected list result to include question types, got %+v", typeResult.Types)
+	}
 }
 
 func TestFinanceQuestionSaveAddsCustomTypeOnce(t *testing.T) {

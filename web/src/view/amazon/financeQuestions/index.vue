@@ -111,7 +111,8 @@ defineOptions({
   name: 'AmazonFinanceQuestionManager'
 })
 
-const questionTypeOptions = ref([])
+const defaultQuestionTypes = ['店铺创建', '收款账户']
+const questionTypeOptions = ref([...defaultQuestionTypes])
 
 const loading = ref(false)
 const saving = ref(false)
@@ -148,10 +149,23 @@ const buildListPayload = () => ({
   questionType: searchInfo.questionType
 })
 
+const mergeQuestionTypes = (...sources) => {
+  const merged = new Set(questionTypeOptions.value)
+  sources.flat().forEach((item) => {
+    const value = String(item || '').trim()
+    if (value) merged.add(value)
+  })
+  questionTypeOptions.value = Array.from(merged)
+}
+
 const fetchQuestionTypes = async () => {
-  const res = await getAmazonFinanceQuestionTypes()
-  if (res.code === 0) {
-    questionTypeOptions.value = res.data || []
+  try {
+    const res = await getAmazonFinanceQuestionTypes()
+    if (res.code === 0) {
+      mergeQuestionTypes(res.data || [])
+    }
+  } catch (error) {
+    // 列表接口也会返回类型，避免单独类型接口异常时下拉被清空。
   }
 }
 
@@ -160,10 +174,12 @@ const fetchTable = async () => {
   try {
     const res = await getAmazonFinanceQuestionList(buildListPayload())
     if (res.code === 0) {
-      tableData.value = res.data.list || []
+      const rows = res.data.list || []
+      tableData.value = rows
       total.value = res.data.total || 0
       searchInfo.page = res.data.page || searchInfo.page
       searchInfo.pageSize = res.data.pageSize || searchInfo.pageSize
+      mergeQuestionTypes(res.data.types || [], rows.map(row => row.questionType))
     }
   } finally {
     loading.value = false
@@ -210,6 +226,7 @@ const openDialog = async (row) => {
       questionType: res.data.questionType || '',
       contentHtml: res.data.contentHtml || ''
     })
+    mergeQuestionTypes([form.questionType])
   } else {
     form.questionType = questionTypeOptions.value[0] || ''
   }
@@ -230,6 +247,7 @@ const submitForm = async () => {
     if (res.code === 0) {
       ElMessage.success('保存成功')
       dialogVisible.value = false
+      mergeQuestionTypes([form.questionType])
       await fetchQuestionTypes()
       await fetchTable()
     }

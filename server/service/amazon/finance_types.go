@@ -111,6 +111,7 @@ type FinanceQuestionDetail struct {
 
 type FinanceQuestionPageResult struct {
 	List     []FinanceQuestionDetail `json:"list"`
+	Types    []string                `json:"types"`
 	Total    int64                   `json:"total"`
 	Page     int                     `json:"page"`
 	PageSize int                     `json:"pageSize"`

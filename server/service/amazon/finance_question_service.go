@@ -20,7 +20,8 @@ var defaultFinanceQuestionTypes = []amazonModel.FinanceQuestionType{
 }
 
 func (s *FinanceQuestionService) List(ctx context.Context, req amazonReq.FinanceQuestionListReq) (FinanceQuestionPageResult, error) {
-	db := global.GVA_DB.WithContext(ctx).Model(&amazonModel.FinanceQuestion{})
+	baseDB := global.GVA_DB.WithContext(ctx)
+	db := baseDB.Model(&amazonModel.FinanceQuestion{})
 	if strings.TrimSpace(req.Title) != "" {
 		keyword := "%" + strings.TrimSpace(req.Title) + "%"
 		db = db.Where("title LIKE ?", keyword)
@@ -45,6 +46,11 @@ func (s *FinanceQuestionService) List(ctx context.Context, req amazonReq.Finance
 	for _, row := range rows {
 		result.List = append(result.List, buildFinanceQuestionDetail(row))
 	}
+	types, err := loadFinanceQuestionTypes(baseDB)
+	if err != nil {
+		return FinanceQuestionPageResult{}, err
+	}
+	result.Types = types
 	return result, nil
 }
 
@@ -93,7 +99,10 @@ func (s *FinanceQuestionService) Save(ctx context.Context, req amazonReq.Finance
 }
 
 func (s *FinanceQuestionService) ListTypes(ctx context.Context) ([]string, error) {
-	db := global.GVA_DB.WithContext(ctx)
+	return loadFinanceQuestionTypes(global.GVA_DB.WithContext(ctx))
+}
+
+func loadFinanceQuestionTypes(db *gorm.DB) ([]string, error) {
 	if err := EnsureFinanceQuestionTypes(db); err != nil {
 		return nil, err
 	}
