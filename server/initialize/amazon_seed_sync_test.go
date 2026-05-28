@@ -120,6 +120,46 @@ func TestSyncAmazonSeedsGrantsFinanceQuestionAccess(t *testing.T) {
 	}
 }
 
+func TestSyncAmazonSeedsRunsWithOnlySuperAdminAuthority(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "amazon-question-single-admin.db")), &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	global.GVA_DB = db
+	global.GVA_LOG = zap.NewNop()
+
+	models := []interface{}{
+		&sysModel.SysUser{},
+		&sysModel.SysAuthority{},
+		&sysModel.SysBaseMenu{},
+		&sysModel.SysAuthorityMenu{},
+		&sysModel.SysApi{},
+		&adapter.CasbinRule{},
+	}
+	models = append(models, amazonModel.BusinessModels()...)
+	if err := db.AutoMigrate(models...); err != nil {
+		t.Fatalf("migrate models: %v", err)
+	}
+
+	if err := db.Create(&sysModel.SysUser{Username: "admin", AuthorityId: 888}).Error; err != nil {
+		t.Fatalf("seed admin user: %v", err)
+	}
+	if err := db.Create(&sysModel.SysAuthority{AuthorityId: 888, AuthorityName: "超级管理员", DefaultRouter: "dashboard"}).Error; err != nil {
+		t.Fatalf("seed authority: %v", err)
+	}
+
+	if err := syncAmazonSeeds(db); err != nil {
+		t.Fatalf("sync amazon seeds: %v", err)
+	}
+
+	var questionMenu sysModel.SysBaseMenu
+	if err := db.Where("name = ?", "amazonFinanceQuestionManager").First(&questionMenu).Error; err != nil {
+		t.Fatalf("load question menu: %v", err)
+	}
+	assertAuthorityHasMenu(t, db, 888, "amazonFinanceQuestionManager")
+	assertAuthorityHasPolicy(t, db, 888, "POST", "/amazonFinanceQuestion/list")
+}
+
 func assertAuthorityHasMenu(t *testing.T, db *gorm.DB, authorityID uint, menuName string) {
 	t.Helper()
 	var menu sysModel.SysBaseMenu

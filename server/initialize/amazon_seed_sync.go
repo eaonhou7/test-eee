@@ -132,7 +132,7 @@ func amazonSeedSystemDataReady(db *gorm.DB) bool {
 	if err := db.Model(&system.SysUser{}).Where("username = ?", "admin").Count(&count).Error; err != nil || count == 0 {
 		return false
 	}
-	if err := db.Model(&system.SysAuthority{}).Where("authority_id IN ?", []uint{888, 9528}).Count(&count).Error; err != nil || count < 2 {
+	if err := db.Model(&system.SysAuthority{}).Count(&count).Error; err != nil || count == 0 {
 		return false
 	}
 	return true
