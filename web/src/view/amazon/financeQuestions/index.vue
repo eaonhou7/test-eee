@@ -102,6 +102,7 @@ import { ElMessage } from 'element-plus'
 import {
   findAmazonFinanceQuestion,
   getAmazonFinanceQuestionList,
+  getAmazonFinanceQuestionTypes,
   saveAmazonFinanceQuestion
 } from '@/api/amazonFinanceQuestion'
 import RichEdit from '@/components/richtext/rich-edit.vue'
@@ -110,7 +111,7 @@ defineOptions({
   name: 'AmazonFinanceQuestionManager'
 })
 
-const questionTypeOptions = ['店铺创建', '收款账户']
+const questionTypeOptions = ref([])
 
 const loading = ref(false)
 const saving = ref(false)
@@ -146,6 +147,13 @@ const buildListPayload = () => ({
   title: searchInfo.title,
   questionType: searchInfo.questionType
 })
+
+const fetchQuestionTypes = async () => {
+  const res = await getAmazonFinanceQuestionTypes()
+  if (res.code === 0) {
+    questionTypeOptions.value = res.data || []
+  }
+}
 
 const fetchTable = async () => {
   loading.value = true
@@ -203,7 +211,7 @@ const openDialog = async (row) => {
       contentHtml: res.data.contentHtml || ''
     })
   } else {
-    form.questionType = questionTypeOptions[0]
+    form.questionType = questionTypeOptions.value[0] || ''
   }
   dialogVisible.value = true
 }
@@ -222,6 +230,7 @@ const submitForm = async () => {
     if (res.code === 0) {
       ElMessage.success('保存成功')
       dialogVisible.value = false
+      await fetchQuestionTypes()
       await fetchTable()
     }
   } finally {
@@ -236,5 +245,8 @@ const formatDate = (value) => {
   return date.toLocaleString()
 }
 
-onMounted(fetchTable)
+onMounted(async () => {
+  await fetchQuestionTypes()
+  await fetchTable()
+})
 </script>

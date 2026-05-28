@@ -16,6 +16,13 @@ export const findAmazonFinanceQuestion = (params) => {
   })
 }
 
+export const getAmazonFinanceQuestionTypes = () => {
+  return service({
+    url: '/amazonFinanceQuestion/types',
+    method: 'get'
+  })
+}
+
 export const saveAmazonFinanceQuestion = (data) => {
   return service({
     url: '/amazonFinanceQuestion/save',

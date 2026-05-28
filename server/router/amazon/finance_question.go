@@ -9,6 +9,7 @@ func (r *FinanceQuestionRouter) InitAmazonFinanceQuestionRouter(router *gin.Rout
 	{
 		group.POST("list", amazonFinanceQuestionApi.List)
 		group.GET("find", amazonFinanceQuestionApi.Find)
+		group.GET("types", amazonFinanceQuestionApi.Types)
 		group.POST("save", amazonFinanceQuestionApi.Save)
 	}
 	return group

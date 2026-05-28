@@ -83,6 +83,9 @@ func syncAmazonSeeds(db *gorm.DB) error {
 	if err := syncAmazonLogisticsPlatforms(db); err != nil {
 		return err
 	}
+	if err := amazonService.EnsureFinanceQuestionTypes(db); err != nil {
+		return err
+	}
 	if !amazonSeedSystemDataReady(db) {
 		return nil
 	}
@@ -300,6 +303,7 @@ func amazonAPISeeds() []amazonAPISeed {
 		{Group: "Amazon财务汇率", Method: "POST", Path: "/amazonFinanceFx/refreshDailyRates", Description: "立即刷新 Amazon 财务汇率"},
 		{Group: "Amazon财务问题", Method: "POST", Path: "/amazonFinanceQuestion/list", Description: "查询 Amazon 财务问题列表"},
 		{Group: "Amazon财务问题", Method: "GET", Path: "/amazonFinanceQuestion/find", Description: "查询 Amazon 财务问题详情"},
+		{Group: "Amazon财务问题", Method: "GET", Path: "/amazonFinanceQuestion/types", Description: "查询 Amazon 财务问题类型"},
 		{Group: "Amazon财务问题", Method: "POST", Path: "/amazonFinanceQuestion/save", Description: "保存 Amazon 财务问题"},
 		{Group: "Amazon财务成本账单", Method: "POST", Path: "/amazonFinanceCostBill/list", Description: "查询 Amazon 财务成本账单"},
 		{Group: "Amazon财务成本账单", Method: "GET", Path: "/amazonFinanceCostBill/find", Description: "查询 Amazon 财务成本账单详情"},
@@ -580,6 +584,7 @@ func amazonFinanceQuestionAPISeeds() []amazonAPISeed {
 	return []amazonAPISeed{
 		{Method: "POST", Path: "/amazonFinanceQuestion/list"},
 		{Method: "GET", Path: "/amazonFinanceQuestion/find"},
+		{Method: "GET", Path: "/amazonFinanceQuestion/types"},
 		{Method: "POST", Path: "/amazonFinanceQuestion/save"},
 	}
 }

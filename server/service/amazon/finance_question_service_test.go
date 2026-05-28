@@ -83,6 +83,45 @@ func TestFinanceQuestionListFiltersByTitleAndType(t *testing.T) {
 	}
 }
 
+func TestFinanceQuestionSaveAddsCustomTypeOnce(t *testing.T) {
+	setupFinanceQuestionTestDB(t)
+	service := new(FinanceQuestionService)
+
+	for i := 0; i < 2; i++ {
+		if _, err := service.Save(context.Background(), amazonReq.FinanceQuestionSaveReq{
+			Title:        "FBM 选品逻辑",
+			QuestionType: " 选品 ",
+			ContentHTML:  "<p>content</p>",
+		}); err != nil {
+			t.Fatalf("save custom type question: %v", err)
+		}
+	}
+
+	var count int64
+	if err := global.GVA_DB.Model(&amazonModel.FinanceQuestionType{}).Where("name = ?", "选品").Count(&count).Error; err != nil {
+		t.Fatalf("count custom type: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected one custom type, got %d", count)
+	}
+}
+
+func TestFinanceQuestionListTypesIncludesDefaultsAndHistoricalTypes(t *testing.T) {
+	setupFinanceQuestionTestDB(t)
+	seedFinanceQuestion(t, "历史选品问题", "选品")
+
+	types, err := new(FinanceQuestionService).ListTypes(context.Background())
+	if err != nil {
+		t.Fatalf("list types: %v", err)
+	}
+
+	for _, expected := range []string{"店铺创建", "收款账户", "选品"} {
+		if !containsString(types, expected) {
+			t.Fatalf("expected type %s in %+v", expected, types)
+		}
+	}
+}
+
 func TestFinanceQuestionFindMissingReturnsError(t *testing.T) {
 	setupFinanceQuestionTestDB(t)
 
@@ -98,11 +137,20 @@ func setupFinanceQuestionTestDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
-	if err := db.AutoMigrate(&amazonModel.FinanceQuestion{}); err != nil {
+	if err := db.AutoMigrate(&amazonModel.FinanceQuestion{}, &amazonModel.FinanceQuestionType{}); err != nil {
 		t.Fatalf("migrate finance question table: %v", err)
 	}
 	global.GVA_DB = db
 	global.GVA_LOG = zap.NewNop()
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func seedFinanceQuestion(t *testing.T, title string, questionType string) {

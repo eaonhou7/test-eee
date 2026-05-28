@@ -12,3 +12,13 @@ type FinanceQuestion struct {
 func (FinanceQuestion) TableName() string {
 	return "amazon_finance_questions"
 }
+
+type FinanceQuestionType struct {
+	global.GVA_MODEL
+	Name string `json:"name" gorm:"column:name;type:varchar(64);uniqueIndex;comment:问题类型"`
+	Sort int    `json:"sort" gorm:"column:sort;index;default:0;comment:排序"`
+}
+
+func (FinanceQuestionType) TableName() string {
+	return "amazon_finance_question_types"
+}

@@ -40,6 +40,16 @@ func (a *FinanceQuestionApi) Find(c *gin.Context) {
 	commonRes.OkWithDetailed(data, "查询成功", c)
 }
 
+func (a *FinanceQuestionApi) Types(c *gin.Context) {
+	data, err := amazonFinanceQuestionService.ListTypes(c.Request.Context())
+	if err != nil {
+		global.GVA_LOG.Error("查询 Amazon 财务问题类型失败", zap.Error(err))
+		commonRes.FailWithMessage(err.Error(), c)
+		return
+	}
+	commonRes.OkWithDetailed(data, "查询成功", c)
+}
+
 func (a *FinanceQuestionApi) Save(c *gin.Context) {
 	var req amazonReq.FinanceQuestionSaveReq
 	if err := c.ShouldBindJSON(&req); err != nil {

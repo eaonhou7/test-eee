@@ -103,12 +103,21 @@ func TestSyncAmazonSeedsGrantsFinanceQuestionAccess(t *testing.T) {
 	if err := db.Model(&sysModel.SysApi{}).Where("path IN ?", []string{
 		"/amazonFinanceQuestion/list",
 		"/amazonFinanceQuestion/find",
+		"/amazonFinanceQuestion/types",
 		"/amazonFinanceQuestion/save",
 	}).Count(&apiCount).Error; err != nil {
 		t.Fatalf("count finance question apis: %v", err)
 	}
-	if apiCount != 3 {
-		t.Fatalf("expected 3 finance question APIs, got %d", apiCount)
+	if apiCount != 4 {
+		t.Fatalf("expected 4 finance question APIs, got %d", apiCount)
+	}
+
+	var typeCount int64
+	if err := db.Model(&amazonModel.FinanceQuestionType{}).Where("name IN ?", []string{"店铺创建", "收款账户"}).Count(&typeCount).Error; err != nil {
+		t.Fatalf("count finance question types: %v", err)
+	}
+	if typeCount != 2 {
+		t.Fatalf("expected default finance question types, got %d", typeCount)
 	}
 
 	for _, authorityID := range []uint{888, 9528, 7001, 7002} {
@@ -116,6 +125,7 @@ func TestSyncAmazonSeedsGrantsFinanceQuestionAccess(t *testing.T) {
 		assertAuthorityHasMenu(t, db, authorityID, "amazonFinanceQuestionManager")
 		assertAuthorityHasPolicy(t, db, authorityID, "POST", "/amazonFinanceQuestion/list")
 		assertAuthorityHasPolicy(t, db, authorityID, "GET", "/amazonFinanceQuestion/find")
+		assertAuthorityHasPolicy(t, db, authorityID, "GET", "/amazonFinanceQuestion/types")
 		assertAuthorityHasPolicy(t, db, authorityID, "POST", "/amazonFinanceQuestion/save")
 	}
 }
@@ -158,6 +168,7 @@ func TestSyncAmazonSeedsRunsWithOnlySuperAdminAuthority(t *testing.T) {
 	}
 	assertAuthorityHasMenu(t, db, 888, "amazonFinanceQuestionManager")
 	assertAuthorityHasPolicy(t, db, 888, "POST", "/amazonFinanceQuestion/list")
+	assertAuthorityHasPolicy(t, db, 888, "GET", "/amazonFinanceQuestion/types")
 }
 
 func assertAuthorityHasMenu(t *testing.T, db *gorm.DB, authorityID uint, menuName string) {
