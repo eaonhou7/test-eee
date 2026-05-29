@@ -35,7 +35,7 @@ var amazonLegacyAuthorityIDs = []uint{888, 9528}
 
 var amazonFinanceQuestionAuthorityNames = []string{"管理员", "超级管理员"}
 
-var amazonFinanceQuestionMenuNames = []string{"amazonFinanceCenter", "amazonFinanceQuestionManager"}
+var amazonFinanceQuestionMenuNames = []string{"amazonKnowledgeCenter", "amazonFinanceQuestionManager"}
 
 var amazonSystemRootSorts = map[string]int{
 	"https://www.gin-vue-admin.com": 20,
@@ -73,7 +73,7 @@ var amazonLeafRootNames = map[string]string{
 	"amazonFinanceArapManager":       "amazonFinanceCenter",
 	"amazonFinanceReportManager":     "amazonFinanceCenter",
 	"amazonFinanceFxManager":         "amazonFinanceCenter",
-	"amazonFinanceQuestionManager":   "amazonFinanceCenter",
+	"amazonFinanceQuestionManager":   "amazonKnowledgeCenter",
 }
 
 func syncAmazonSeeds(db *gorm.DB) error {
@@ -108,6 +108,9 @@ func syncAmazonSeeds(db *gorm.DB) error {
 		return err
 	}
 	if err := ensureFinanceQuestionAccess(db); err != nil {
+		return err
+	}
+	if err := pruneFinanceRootAccessWithoutFinanceChildren(db); err != nil {
 		return err
 	}
 	if err := ensureDashboardAccessPolicies(db); err != nil {
@@ -169,7 +172,8 @@ func amazonMenuSeeds() []amazonMenuSeed {
 		{Name: "amazonSupportCenter", MenuLevel: 0, Path: "amazon-support", Component: "view/routerHolder.vue", Sort: 15, Title: "客服中心", Icon: "chat-dot-round"},
 		{Name: "amazonReturnsCenter", MenuLevel: 0, Path: "amazon-returns", Component: "view/routerHolder.vue", Sort: 16, Title: "退货中心", Icon: "refresh-left"},
 		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Title: "财务中心", Icon: "data-analysis"},
-		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 18, Hidden: true, Title: "Amazon 工具", Icon: "goods"},
+		{Name: "amazonKnowledgeCenter", MenuLevel: 0, Path: "amazon-knowledge", Component: "view/routerHolder.vue", Sort: 18, Title: "知识答疑", Icon: "question-filled"},
+		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 19, Hidden: true, Title: "Amazon 工具", Icon: "goods"},
 
 		{Name: "amazonLogisticsLibrary", ParentName: "amazonLogisticsCenter", MenuLevel: 1, Path: "logisticsLibrary", Component: "view/amazon/logisticsLibrary/index.vue", Sort: 1, Title: "物流报价库", Icon: "tickets"},
 		{Name: "amazonLogisticsQuote", ParentName: "amazonLogisticsCenter", MenuLevel: 1, Path: "logisticsQuote", Component: "view/amazon/logistics/index.vue", Sort: 2, Title: "物流比价", Icon: "goods-filled"},
@@ -201,7 +205,7 @@ func amazonMenuSeeds() []amazonMenuSeed {
 		{Name: "amazonFinanceArapManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeArap", Component: "view/amazon/financeArap/index.vue", Sort: 4, Title: "应收应付", Icon: "money"},
 		{Name: "amazonFinanceReportManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeReports", Component: "view/amazon/financeReports/index.vue", Sort: 5, Title: "利润报表", Icon: "histogram"},
 		{Name: "amazonFinanceFxManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeFx", Component: "view/amazon/financeFx/index.vue", Sort: 6, Title: "汇率管理", Icon: "money"},
-		{Name: "amazonFinanceQuestionManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeQuestions", Component: "view/amazon/financeQuestions/index.vue", Sort: 7, Title: "问题列表", Icon: "question-filled"},
+		{Name: "amazonFinanceQuestionManager", ParentName: "amazonKnowledgeCenter", MenuLevel: 1, Path: "financeQuestions", Component: "view/amazon/financeQuestions/index.vue", Sort: 1, Title: "问题列表", Icon: "question-filled"},
 	}
 }
 
@@ -578,6 +582,84 @@ func ensureAmazonPoliciesForAuthorities(db *gorm.DB, authorityIDs []uint, seeds 
 		}
 	}
 	return nil
+}
+
+func pruneFinanceRootAccessWithoutFinanceChildren(db *gorm.DB) error {
+	var financeRoot system.SysBaseMenu
+	err := db.Where("name = ?", "amazonFinanceCenter").First(&financeRoot).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	financeLeafNames := make([]string, 0)
+	for leafName, rootName := range amazonLeafRootNames {
+		if rootName == "amazonFinanceCenter" {
+			financeLeafNames = append(financeLeafNames, leafName)
+		}
+	}
+	if len(financeLeafNames) == 0 {
+		return nil
+	}
+
+	var financeLeaves []system.SysBaseMenu
+	if err := db.Where("name IN ?", financeLeafNames).Find(&financeLeaves).Error; err != nil {
+		return err
+	}
+	if len(financeLeaves) == 0 {
+		return nil
+	}
+	financeLeafIDs := make([]string, 0, len(financeLeaves))
+	for _, menu := range financeLeaves {
+		financeLeafIDs = append(financeLeafIDs, strconv.Itoa(int(menu.ID)))
+	}
+
+	financeRootID := strconv.Itoa(int(financeRoot.ID))
+	var rootRelations []system.SysAuthorityMenu
+	if err := db.Where("sys_base_menu_id = ?", financeRootID).Find(&rootRelations).Error; err != nil {
+		return err
+	}
+	if len(rootRelations) == 0 {
+		return nil
+	}
+
+	authorityIDs := make([]string, 0, len(rootRelations))
+	seenAuthorities := map[string]struct{}{}
+	for _, relation := range rootRelations {
+		if _, ok := seenAuthorities[relation.AuthorityId]; ok {
+			continue
+		}
+		seenAuthorities[relation.AuthorityId] = struct{}{}
+		authorityIDs = append(authorityIDs, relation.AuthorityId)
+	}
+
+	var financeLeafRelations []system.SysAuthorityMenu
+	if err := db.
+		Where("sys_authority_authority_id IN ? AND sys_base_menu_id IN ?", authorityIDs, financeLeafIDs).
+		Find(&financeLeafRelations).Error; err != nil {
+		return err
+	}
+	hasFinanceChildren := map[string]struct{}{}
+	for _, relation := range financeLeafRelations {
+		hasFinanceChildren[relation.AuthorityId] = struct{}{}
+	}
+
+	removeAuthorityIDs := make([]string, 0)
+	for _, authorityID := range authorityIDs {
+		if _, ok := hasFinanceChildren[authorityID]; ok {
+			continue
+		}
+		removeAuthorityIDs = append(removeAuthorityIDs, authorityID)
+	}
+	if len(removeAuthorityIDs) == 0 {
+		return nil
+	}
+
+	return db.
+		Where("sys_authority_authority_id IN ? AND sys_base_menu_id = ?", removeAuthorityIDs, financeRootID).
+		Delete(&system.SysAuthorityMenu{}).Error
 }
 
 func amazonFinanceQuestionAPISeeds() []amazonAPISeed {

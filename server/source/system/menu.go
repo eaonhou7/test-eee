@@ -113,7 +113,8 @@ func initRootMenuSeeds() []initMenuSeed {
 		{Name: "amazonSupportCenter", MenuLevel: 0, Path: "amazon-support", Component: "view/routerHolder.vue", Sort: 15, Meta: Meta{Title: "客服中心", Icon: "chat-dot-round"}},
 		{Name: "amazonReturnsCenter", MenuLevel: 0, Path: "amazon-returns", Component: "view/routerHolder.vue", Sort: 16, Meta: Meta{Title: "退货中心", Icon: "refresh-left"}},
 		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Meta: Meta{Title: "财务中心", Icon: "data-analysis"}},
-		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 18, Hidden: true, Meta: Meta{Title: "Amazon 工具", Icon: "goods"}},
+		{Name: "amazonKnowledgeCenter", MenuLevel: 0, Path: "amazon-knowledge", Component: "view/routerHolder.vue", Sort: 18, Meta: Meta{Title: "知识答疑", Icon: "question-filled"}},
+		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 19, Hidden: true, Meta: Meta{Title: "Amazon 工具", Icon: "goods"}},
 		{Name: "https://www.gin-vue-admin.com", MenuLevel: 0, Path: "https://www.gin-vue-admin.com", Component: "/", Sort: 20, Meta: Meta{Title: "官方网站", Icon: "customer-gva"}},
 		{Name: "dashboard", MenuLevel: 0, Path: "dashboard", Component: "view/dashboard/index.vue", Sort: 1, Meta: Meta{Title: "仪表盘", Icon: "odometer"}},
 		{Name: "superAdmin", MenuLevel: 0, Path: "admin", Component: "view/superAdmin/index.vue", Sort: 22, Meta: Meta{Title: "超级管理员", Icon: "user"}},
@@ -193,7 +194,7 @@ func initChildMenuSeeds() []initMenuSeed {
 		{Name: "amazonFinanceArapManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeArap", Component: "view/amazon/financeArap/index.vue", Sort: 4, Meta: Meta{Title: "应收应付", Icon: "money"}},
 		{Name: "amazonFinanceReportManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeReports", Component: "view/amazon/financeReports/index.vue", Sort: 5, Meta: Meta{Title: "利润报表", Icon: "histogram"}},
 		{Name: "amazonFinanceFxManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeFx", Component: "view/amazon/financeFx/index.vue", Sort: 6, Meta: Meta{Title: "汇率管理", Icon: "money"}},
-		{Name: "amazonFinanceQuestionManager", ParentName: "amazonFinanceCenter", MenuLevel: 1, Path: "financeQuestions", Component: "view/amazon/financeQuestions/index.vue", Sort: 7, Meta: Meta{Title: "问题列表", Icon: "question-filled"}},
+		{Name: "amazonFinanceQuestionManager", ParentName: "amazonKnowledgeCenter", MenuLevel: 1, Path: "financeQuestions", Component: "view/amazon/financeQuestions/index.vue", Sort: 1, Meta: Meta{Title: "问题列表", Icon: "question-filled"}},
 	}
 }
 

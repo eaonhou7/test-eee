@@ -71,6 +71,8 @@ function getLegacyAmazonRedirectPath(path) {
     nextRoot = 'amazon-support'
   } else if (head === 'return' || head.startsWith('return')) {
     nextRoot = 'amazon-returns'
+  } else if (head === 'financeQuestions') {
+    nextRoot = 'amazon-knowledge'
   } else if (head.startsWith('finance')) {
     nextRoot = 'amazon-finance'
   }

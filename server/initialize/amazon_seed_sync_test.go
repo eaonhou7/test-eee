@@ -95,8 +95,18 @@ func TestSyncAmazonSeedsGrantsFinanceQuestionAccess(t *testing.T) {
 	if err := db.Where("name = ?", "amazonFinanceQuestionManager").First(&questionMenu).Error; err != nil {
 		t.Fatalf("load question menu: %v", err)
 	}
+	var knowledgeMenu sysModel.SysBaseMenu
+	if err := db.Where("name = ?", "amazonKnowledgeCenter").First(&knowledgeMenu).Error; err != nil {
+		t.Fatalf("load knowledge menu: %v", err)
+	}
+	if knowledgeMenu.Path != "amazon-knowledge" || knowledgeMenu.Meta.Title != "知识答疑" {
+		t.Fatalf("unexpected knowledge menu: %+v", knowledgeMenu)
+	}
 	if questionMenu.Path != "financeQuestions" || questionMenu.Meta.Title != "问题列表" {
 		t.Fatalf("unexpected question menu: %+v", questionMenu)
+	}
+	if questionMenu.ParentId != knowledgeMenu.ID {
+		t.Fatalf("expected question menu parent %d, got %d", knowledgeMenu.ID, questionMenu.ParentId)
 	}
 
 	var apiCount int64
@@ -121,13 +131,33 @@ func TestSyncAmazonSeedsGrantsFinanceQuestionAccess(t *testing.T) {
 	}
 
 	for _, authorityID := range []uint{888, 9528, 7001, 7002} {
-		assertAuthorityHasMenu(t, db, authorityID, "amazonFinanceCenter")
+		assertAuthorityHasMenu(t, db, authorityID, "amazonKnowledgeCenter")
 		assertAuthorityHasMenu(t, db, authorityID, "amazonFinanceQuestionManager")
 		assertAuthorityHasPolicy(t, db, authorityID, "POST", "/amazonFinanceQuestion/list")
 		assertAuthorityHasPolicy(t, db, authorityID, "GET", "/amazonFinanceQuestion/find")
 		assertAuthorityHasPolicy(t, db, authorityID, "GET", "/amazonFinanceQuestion/types")
 		assertAuthorityHasPolicy(t, db, authorityID, "POST", "/amazonFinanceQuestion/save")
 	}
+	for _, authorityID := range []uint{7001, 7002} {
+		assertAuthorityLacksMenu(t, db, authorityID, "amazonFinanceCenter")
+	}
+
+	var financeMenu sysModel.SysBaseMenu
+	if err := db.Where("name = ?", "amazonFinanceCenter").First(&financeMenu).Error; err != nil {
+		t.Fatalf("load finance menu: %v", err)
+	}
+	if err := db.Create(&sysModel.SysAuthorityMenu{
+		MenuId:      strconv.Itoa(int(financeMenu.ID)),
+		AuthorityId: strconv.Itoa(7001),
+	}).Error; err != nil {
+		t.Fatalf("seed stale finance relation: %v", err)
+	}
+	if err := syncAmazonSeeds(db); err != nil {
+		t.Fatalf("sync amazon seeds after stale relation: %v", err)
+	}
+	assertAuthorityLacksMenu(t, db, 7001, "amazonFinanceCenter")
+	assertAuthorityHasMenu(t, db, 7001, "amazonKnowledgeCenter")
+	assertAuthorityHasMenu(t, db, 7001, "amazonFinanceQuestionManager")
 }
 
 func TestSyncAmazonSeedsRunsWithOnlySuperAdminAuthority(t *testing.T) {
@@ -166,6 +196,7 @@ func TestSyncAmazonSeedsRunsWithOnlySuperAdminAuthority(t *testing.T) {
 	if err := db.Where("name = ?", "amazonFinanceQuestionManager").First(&questionMenu).Error; err != nil {
 		t.Fatalf("load question menu: %v", err)
 	}
+	assertAuthorityHasMenu(t, db, 888, "amazonKnowledgeCenter")
 	assertAuthorityHasMenu(t, db, 888, "amazonFinanceQuestionManager")
 	assertAuthorityHasPolicy(t, db, 888, "POST", "/amazonFinanceQuestion/list")
 	assertAuthorityHasPolicy(t, db, 888, "GET", "/amazonFinanceQuestion/types")
@@ -185,6 +216,23 @@ func assertAuthorityHasMenu(t *testing.T, db *gorm.DB, authorityID uint, menuNam
 	}
 	if count != 1 {
 		t.Fatalf("expected authority %d to have menu %s", authorityID, menuName)
+	}
+}
+
+func assertAuthorityLacksMenu(t *testing.T, db *gorm.DB, authorityID uint, menuName string) {
+	t.Helper()
+	var menu sysModel.SysBaseMenu
+	if err := db.Where("name = ?", menuName).First(&menu).Error; err != nil {
+		t.Fatalf("load menu %s: %v", menuName, err)
+	}
+	var count int64
+	if err := db.Model(&sysModel.SysAuthorityMenu{}).
+		Where("sys_authority_authority_id = ? AND sys_base_menu_id = ?", strconv.Itoa(int(authorityID)), strconv.Itoa(int(menu.ID))).
+		Count(&count).Error; err != nil {
+		t.Fatalf("count menu relation %d/%s: %v", authorityID, menuName, err)
+	}
+	if count != 0 {
+		t.Fatalf("expected authority %d to lack menu %s", authorityID, menuName)
 	}
 }
 
