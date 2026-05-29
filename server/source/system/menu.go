@@ -105,14 +105,14 @@ func buildMenuEntities(seeds []initMenuSeed, parentIDs map[string]uint) []SysBas
 
 func initRootMenuSeeds() []initMenuSeed {
 	return []initMenuSeed{
-		{Name: "amazonLogisticsCenter", MenuLevel: 0, Path: "amazon-logistics", Component: "view/routerHolder.vue", Sort: 10, Meta: Meta{Title: "物流中心", Icon: "goods"}},
-		{Name: "amazonProductCenter", MenuLevel: 0, Path: "amazon-product", Component: "view/routerHolder.vue", Sort: 11, Meta: Meta{Title: "产品中心", Icon: "files"}},
-		{Name: "amazonCollectionCenter", MenuLevel: 0, Path: "amazon-collection", Component: "view/routerHolder.vue", Sort: 12, Meta: Meta{Title: "采集中心", Icon: "shopping-bag"}},
-		{Name: "amazonStoreCenter", MenuLevel: 0, Path: "amazon-store", Component: "view/routerHolder.vue", Sort: 13, Meta: Meta{Title: "店铺中心", Icon: "shop"}},
-		{Name: "amazonOrderCenter", MenuLevel: 0, Path: "amazon-order", Component: "view/routerHolder.vue", Sort: 14, Meta: Meta{Title: "订单中心", Icon: "tickets"}},
-		{Name: "amazonSupportCenter", MenuLevel: 0, Path: "amazon-support", Component: "view/routerHolder.vue", Sort: 15, Meta: Meta{Title: "客服中心", Icon: "chat-dot-round"}},
-		{Name: "amazonReturnsCenter", MenuLevel: 0, Path: "amazon-returns", Component: "view/routerHolder.vue", Sort: 16, Meta: Meta{Title: "退货中心", Icon: "refresh-left"}},
-		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Meta: Meta{Title: "财务中心", Icon: "data-analysis"}},
+		{Name: "amazonLogisticsCenter", MenuLevel: 0, Path: "amazon-logistics", Component: "view/routerHolder.vue", Sort: 14, Meta: Meta{Title: "物流", Icon: "goods"}},
+		{Name: "amazonProductCenter", MenuLevel: 0, Path: "amazon-product", Component: "view/routerHolder.vue", Sort: 11, Meta: Meta{Title: "产品", Icon: "files"}},
+		{Name: "amazonCollectionCenter", MenuLevel: 0, Path: "amazon-collection", Component: "view/routerHolder.vue", Sort: 12, Meta: Meta{Title: "采集", Icon: "shopping-bag"}},
+		{Name: "amazonStoreCenter", MenuLevel: 0, Path: "amazon-store", Component: "view/routerHolder.vue", Sort: 2, Meta: Meta{Title: "店铺", Icon: "shop"}},
+		{Name: "amazonOrderCenter", MenuLevel: 0, Path: "amazon-order", Component: "view/routerHolder.vue", Sort: 13, Meta: Meta{Title: "订单", Icon: "tickets"}},
+		{Name: "amazonSupportCenter", MenuLevel: 0, Path: "amazon-support", Component: "view/routerHolder.vue", Sort: 15, Meta: Meta{Title: "客服", Icon: "chat-dot-round"}},
+		{Name: "amazonReturnsCenter", MenuLevel: 0, Path: "amazon-returns", Component: "view/routerHolder.vue", Sort: 16, Meta: Meta{Title: "退货", Icon: "refresh-left"}},
+		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Meta: Meta{Title: "财务", Icon: "data-analysis"}},
 		{Name: "amazonKnowledgeCenter", MenuLevel: 0, Path: "amazon-knowledge", Component: "view/routerHolder.vue", Sort: 18, Meta: Meta{Title: "知识答疑", Icon: "question-filled"}},
 		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 19, Hidden: true, Meta: Meta{Title: "Amazon 工具", Icon: "goods"}},
 		{Name: "https://www.gin-vue-admin.com", MenuLevel: 0, Path: "https://www.gin-vue-admin.com", Component: "/", Sort: 20, Meta: Meta{Title: "官方网站", Icon: "customer-gva"}},

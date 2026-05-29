@@ -1259,10 +1259,10 @@ func normalizePublicImageURL(rawURL string) (string, error) {
 }
 
 func build1688TaskSearchURL(imageURL, taskToken string) string {
-	return "https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&imageAddress=" +
-		url.QueryEscape(strings.TrimSpace(imageURL)) +
-		"&__gva1688Task=" +
-		url.QueryEscape(strings.TrimSpace(taskToken))
+	return "https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&__gva1688Task=" +
+		url.QueryEscape(strings.TrimSpace(taskToken)) +
+		"&__gva1688Image=" +
+		url.QueryEscape(strings.TrimSpace(imageURL))
 }
 
 func append1688TaskParam(rawURL string, taskToken string) string {
@@ -1353,6 +1353,9 @@ func downloadCollectorExtensionArchive() (string, []byte, error) {
 			return nil
 		}
 		if strings.HasPrefix(info.Name(), ".") {
+			return nil
+		}
+		if strings.Contains(info.Name(), ".test.") {
 			return nil
 		}
 		files = append(files, path)

@@ -31,22 +31,37 @@ type amazonAPISeed struct {
 	Description string
 }
 
+type rootMenuPresentationSeed struct {
+	Sort  int
+	Title string
+}
+
 var amazonLegacyAuthorityIDs = []uint{888, 9528}
 
 var amazonFinanceQuestionAuthorityNames = []string{"管理员", "超级管理员"}
 
 var amazonFinanceQuestionMenuNames = []string{"amazonKnowledgeCenter", "amazonFinanceQuestionManager"}
 
-var amazonSystemRootSorts = map[string]int{
-	"https://www.gin-vue-admin.com": 20,
-	"dashboard":                     1,
-	"superAdmin":                    22,
-	"systemTools":                   23,
-	"plugin":                        24,
-	"example":                       25,
-	"state":                         26,
-	"about":                         27,
-	"person":                        28,
+var rootMenuPresentationSeeds = map[string]rootMenuPresentationSeed{
+	"dashboard":                     {Sort: 1, Title: "仪表盘"},
+	"amazon-store":                  {Sort: 2, Title: "店铺"},
+	"amazon-product":                {Sort: 11, Title: "产品"},
+	"amazon-collection":             {Sort: 12, Title: "采集"},
+	"amazon-order":                  {Sort: 13, Title: "订单"},
+	"amazon-logistics":              {Sort: 14, Title: "物流"},
+	"amazon-support":                {Sort: 15, Title: "客服"},
+	"amazon-returns":                {Sort: 16, Title: "退货"},
+	"amazon-finance":                {Sort: 17, Title: "财务"},
+	"amazon-knowledge":              {Sort: 18, Title: "知识答疑"},
+	"amazon":                        {Sort: 19, Title: "Amazon 工具"},
+	"https://www.gin-vue-admin.com": {Sort: 20, Title: "官方网站"},
+	"admin":                         {Sort: 22, Title: "超级管理员"},
+	"systemTools":                   {Sort: 23, Title: "编程辅助"},
+	"plugin":                        {Sort: 24, Title: "插件系统"},
+	"example":                       {Sort: 25, Title: "示例文件"},
+	"state":                         {Sort: 26, Title: "服务器状态"},
+	"about":                         {Sort: 27, Title: "关于我们"},
+	"person":                        {Sort: 28, Title: "个人信息"},
 }
 
 var amazonLeafRootNames = map[string]string{
@@ -92,7 +107,7 @@ func syncAmazonSeeds(db *gorm.DB) error {
 	if err := upsertAmazonMenus(db, menuSeeds); err != nil {
 		return err
 	}
-	if err := syncSystemRootMenuSorts(db); err != nil {
+	if err := syncRootMenuPresentation(db); err != nil {
 		return err
 	}
 	if err := syncAmazonDefaultRouters(db); err != nil {
@@ -164,14 +179,14 @@ func syncAmazonLogisticsPlatforms(db *gorm.DB) error {
 
 func amazonMenuSeeds() []amazonMenuSeed {
 	return []amazonMenuSeed{
-		{Name: "amazonLogisticsCenter", MenuLevel: 0, Path: "amazon-logistics", Component: "view/routerHolder.vue", Sort: 10, Title: "物流中心", Icon: "goods"},
-		{Name: "amazonProductCenter", MenuLevel: 0, Path: "amazon-product", Component: "view/routerHolder.vue", Sort: 11, Title: "产品中心", Icon: "files"},
-		{Name: "amazonCollectionCenter", MenuLevel: 0, Path: "amazon-collection", Component: "view/routerHolder.vue", Sort: 12, Title: "采集中心", Icon: "shopping-bag"},
-		{Name: "amazonStoreCenter", MenuLevel: 0, Path: "amazon-store", Component: "view/routerHolder.vue", Sort: 13, Title: "店铺中心", Icon: "shop"},
-		{Name: "amazonOrderCenter", MenuLevel: 0, Path: "amazon-order", Component: "view/routerHolder.vue", Sort: 14, Title: "订单中心", Icon: "tickets"},
-		{Name: "amazonSupportCenter", MenuLevel: 0, Path: "amazon-support", Component: "view/routerHolder.vue", Sort: 15, Title: "客服中心", Icon: "chat-dot-round"},
-		{Name: "amazonReturnsCenter", MenuLevel: 0, Path: "amazon-returns", Component: "view/routerHolder.vue", Sort: 16, Title: "退货中心", Icon: "refresh-left"},
-		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Title: "财务中心", Icon: "data-analysis"},
+		{Name: "amazonLogisticsCenter", MenuLevel: 0, Path: "amazon-logistics", Component: "view/routerHolder.vue", Sort: 14, Title: "物流", Icon: "goods"},
+		{Name: "amazonProductCenter", MenuLevel: 0, Path: "amazon-product", Component: "view/routerHolder.vue", Sort: 11, Title: "产品", Icon: "files"},
+		{Name: "amazonCollectionCenter", MenuLevel: 0, Path: "amazon-collection", Component: "view/routerHolder.vue", Sort: 12, Title: "采集", Icon: "shopping-bag"},
+		{Name: "amazonStoreCenter", MenuLevel: 0, Path: "amazon-store", Component: "view/routerHolder.vue", Sort: 2, Title: "店铺", Icon: "shop"},
+		{Name: "amazonOrderCenter", MenuLevel: 0, Path: "amazon-order", Component: "view/routerHolder.vue", Sort: 13, Title: "订单", Icon: "tickets"},
+		{Name: "amazonSupportCenter", MenuLevel: 0, Path: "amazon-support", Component: "view/routerHolder.vue", Sort: 15, Title: "客服", Icon: "chat-dot-round"},
+		{Name: "amazonReturnsCenter", MenuLevel: 0, Path: "amazon-returns", Component: "view/routerHolder.vue", Sort: 16, Title: "退货", Icon: "refresh-left"},
+		{Name: "amazonFinanceCenter", MenuLevel: 0, Path: "amazon-finance", Component: "view/routerHolder.vue", Sort: 17, Title: "财务", Icon: "data-analysis"},
 		{Name: "amazonKnowledgeCenter", MenuLevel: 0, Path: "amazon-knowledge", Component: "view/routerHolder.vue", Sort: 18, Title: "知识答疑", Icon: "question-filled"},
 		{Name: "amazonTools", MenuLevel: 0, Path: "amazon", Component: "view/routerHolder.vue", Sort: 19, Hidden: true, Title: "Amazon 工具", Icon: "goods"},
 
@@ -421,11 +436,14 @@ func upsertAmazonMenus(db *gorm.DB, seeds []amazonMenuSeed) error {
 	return nil
 }
 
-func syncSystemRootMenuSorts(db *gorm.DB) error {
-	for name, sort := range amazonSystemRootSorts {
+func syncRootMenuPresentation(db *gorm.DB) error {
+	for path, seed := range rootMenuPresentationSeeds {
 		if err := db.Model(&system.SysBaseMenu{}).
-			Where("name = ? AND parent_id = 0", name).
-			Update("sort", sort).Error; err != nil {
+			Where("path = ? AND parent_id = 0", path).
+			Updates(map[string]interface{}{
+				"sort":  seed.Sort,
+				"title": seed.Title,
+			}).Error; err != nil {
 			return err
 		}
 	}

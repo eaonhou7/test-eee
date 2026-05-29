@@ -86,10 +86,22 @@ func TestSyncAmazonSeedsGrantsFinanceQuestionAccess(t *testing.T) {
 	if err := db.Create(&authorities).Error; err != nil {
 		t.Fatalf("seed authorities: %v", err)
 	}
+	systemRootMenus := []sysModel.SysBaseMenu{
+		{Name: "dashboard", Path: "dashboard", Sort: 99, Meta: sysModel.Meta{Title: "旧仪表盘"}},
+		{Name: "superAdmin", Path: "admin", Sort: 99, Meta: sysModel.Meta{Title: "旧超级管理员"}},
+	}
+	if err := db.Create(&systemRootMenus).Error; err != nil {
+		t.Fatalf("seed system root menus: %v", err)
+	}
 
 	if err := syncAmazonSeeds(db); err != nil {
 		t.Fatalf("sync amazon seeds: %v", err)
 	}
+
+	assertRootMenuPresentation(t, db, "dashboard", 1, "仪表盘")
+	assertRootMenuPresentation(t, db, "admin", 22, "超级管理员")
+	assertRootMenuPresentation(t, db, "amazon-store", 2, "店铺")
+	assertRootMenuPresentation(t, db, "amazon-logistics", 14, "物流")
 
 	var questionMenu sysModel.SysBaseMenu
 	if err := db.Where("name = ?", "amazonFinanceQuestionManager").First(&questionMenu).Error; err != nil {
@@ -216,6 +228,17 @@ func assertAuthorityHasMenu(t *testing.T, db *gorm.DB, authorityID uint, menuNam
 	}
 	if count != 1 {
 		t.Fatalf("expected authority %d to have menu %s", authorityID, menuName)
+	}
+}
+
+func assertRootMenuPresentation(t *testing.T, db *gorm.DB, path string, wantSort int, wantTitle string) {
+	t.Helper()
+	var menu sysModel.SysBaseMenu
+	if err := db.Where("path = ? AND parent_id = 0", path).First(&menu).Error; err != nil {
+		t.Fatalf("load root menu %s: %v", path, err)
+	}
+	if menu.Sort != wantSort || menu.Meta.Title != wantTitle {
+		t.Fatalf("expected root menu %s sort/title %d/%q, got %d/%q", path, wantSort, wantTitle, menu.Sort, menu.Meta.Title)
 	}
 }
 

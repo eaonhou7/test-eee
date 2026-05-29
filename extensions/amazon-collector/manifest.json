@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Amazon / 1688 采集助手",
   "description": "从 Amazon 详情页和 1688 图搜/详情页采集商品数据并写入系统采集池。",
-  "version": "0.1.5",
+  "version": "0.1.9",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAplfT2nZabPQn9/0Wlu5EwkWqXKCz8u/66Pa0Vj+ItFjwSgyczT4bkH3sUQyZJQXyty7fPIQYhpu/ciacRRUrMct7IbSU9lBx7SNhHGuf/9tMFzGQ4H4M4Uu6JCzqUQ6bv34z20hZt0ocTXW8FARguv6WovHCclzL8B7b6CuEe4F176UN3Jt6SXNviKmmEl25poY75DygzW+7dloNITX03xNaNP4L4wb4koxTZPMsBMmRXwcWUsEKl2xE7QP81y1YC1o33OpxFKP0Tnb1hT1Eux339vQbZhHFCCONs55hPIaSX8bB0IWCYIamkBt7U9lT/NRMJihYbsK2V8ANwi5a6wIDAQAB",
   "permissions": [
     "storage",
@@ -56,7 +56,7 @@
       "css": [
         "styles.css"
       ],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [

@@ -34,7 +34,10 @@
         type: 'POST'
       })
       const imageId = String(result?.data?.imageId || '').trim()
-      if (!imageId) {
+      const imageAddress = String(result?.data?.imageAddress || '').trim()
+      const imageUrl = String(result?.data?.imageUrl || result?.data?.url || '').trim()
+      const key = String(result?.data?.key || result?.data?.objectKey || result?.data?.name || '').trim()
+      if (!imageId && !imageAddress && !imageUrl && !key) {
         throw new Error((result?.ret || []).join(';') || '1688 未返回 imageId')
       }
       window.postMessage({
@@ -42,7 +45,10 @@
         type: 'UPLOAD_IMAGE_WITH_MTOP_RESULT',
         requestId: request.requestId,
         ok: true,
-        imageId
+        imageId,
+        imageAddress,
+        imageUrl,
+        key
       }, '*')
     } catch (error) {
       window.postMessage({

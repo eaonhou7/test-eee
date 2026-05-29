@@ -1748,12 +1748,17 @@
     return value.includes('alicdn.com') || value.includes('alibaba.com') || value.includes('1688.com')
   }
 
-  const get1688ImageSearchUrl = (imageUrl) => {
+  const get1688ImageSearchUrl = (imageUrl, taskToken = '') => {
     const trimmed = String(imageUrl || '').trim()
-    if (!trimmed) {
-      return 'https://s.1688.com/shen/sell_offer.htm?tab=imageSearch'
+    const url = new URL('https://s.1688.com/shen/sell_offer.htm')
+    url.searchParams.set('tab', 'imageSearch')
+    if (String(taskToken || '').trim()) {
+      url.searchParams.set('__gva1688Task', String(taskToken || '').trim())
     }
-    return `https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&imageAddress=${encodeURIComponent(trimmed)}`
+    if (trimmed) {
+      url.searchParams.set('__gva1688Image', trimmed)
+    }
+    return url.toString()
   }
 
   const isLocalOrPrivateHost = (hostname) => {
@@ -2163,7 +2168,7 @@
         systemCode,
         mainImageUrl: imageUrl
       })
-      const searchURL = String(res.data?.searchUrl || '').trim() || get1688ImageSearchUrl(imageUrl)
+      const searchURL = String(res.data?.searchUrl || '').trim() || get1688ImageSearchUrl(imageUrl, res.data?.taskToken)
       if (!navigateExternalWindow(pendingWindow, searchURL)) {
         pendingWindow?.close?.()
         await copyText(searchURL)

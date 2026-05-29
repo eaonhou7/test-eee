@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -45,11 +46,28 @@ func TestCollector1688CreateTaskReturnsSearchURLAndSystemCode(t *testing.T) {
 	if !strings.HasPrefix(result.SearchURL, "https://s.1688.com/shen/sell_offer.htm?") {
 		t.Fatalf("expected search url to use current 1688 image search entry, got %s", result.SearchURL)
 	}
+	parsedURL, err := url.Parse(result.SearchURL)
+	if err != nil {
+		t.Fatalf("parse search url: %v", err)
+	}
+	query := parsedURL.Query()
+	if query.Get("tab") != "imageSearch" {
+		t.Fatalf("expected image search tab, got %s in %s", query.Get("tab"), result.SearchURL)
+	}
+	if query.Get("__gva1688Task") != result.TaskToken {
+		t.Fatalf("expected task token in search url, got %s in %s", query.Get("__gva1688Task"), result.SearchURL)
+	}
+	if query.Get("__gva1688Image") != "https://img.alicdn.com/example-main.jpg" {
+		t.Fatalf("expected source image param in search url, got %s in %s", query.Get("__gva1688Image"), result.SearchURL)
+	}
+	if query.Get("imageAddress") != "" {
+		t.Fatalf("expected search url not to use native imageAddress for external image, got %s", result.SearchURL)
+	}
 	tabIndex := strings.Index(result.SearchURL, "?tab=imageSearch")
-	imageIndex := strings.Index(result.SearchURL, "&imageAddress=")
 	taskIndex := strings.Index(result.SearchURL, "&__gva1688Task=")
-	if tabIndex < 0 || imageIndex < 0 || taskIndex < 0 || !(tabIndex < imageIndex && imageIndex < taskIndex) {
-		t.Fatalf("expected 1688 image search url param order tab/imageAddress/task, got %s", result.SearchURL)
+	imageIndex := strings.Index(result.SearchURL, "&__gva1688Image=")
+	if tabIndex < 0 || taskIndex < 0 || imageIndex < 0 || !(tabIndex < taskIndex && taskIndex < imageIndex) {
+		t.Fatalf("expected 1688 image search url param order tab/task/source-image, got %s", result.SearchURL)
 	}
 }
 

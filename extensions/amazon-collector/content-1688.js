@@ -3,6 +3,7 @@
   const TOAST_ID = 'amazon-collector-toast'
   const BADGE_ID = 'amazon-collector-floating-badge'
   const COLLECT_TASK_PARAM = '__gva1688Task'
+  const SOURCE_IMAGE_PARAM = '__gva1688Image'
   const PROCUREMENT_TASK_PARAM = '__gva1688ProcurementTask'
   const PAGE_BRIDGE_SOURCE = 'amazon-collector-1688'
 
@@ -15,6 +16,11 @@
   let activeButtonHandler = null
 
   if (!isSupported1688Page()) {
+    return
+  }
+
+  if (window.__AMAZON_COLLECTOR_1688_TEST__) {
+    installTestHooks()
     return
   }
 
@@ -52,7 +58,6 @@
 
     if (is1688SearchPage()) {
       await handleSearchPage()
-      renderCollectBadge()
       return
     }
     if (is1688DetailPage()) {
@@ -85,8 +90,23 @@
     } catch (error) {
       showToast(error?.message || '1688 采集任务上下文初始化失败', 'error')
     }
-    decorateDetailLinks()
-    observeDetailLinks()
+    const sourceImageAddress = getSourceImageAddressFromUrl() || String(currentTaskContext?.mainImageUrl || '').trim()
+    if (isInvalidUploadedImageSearchResultPage() && sourceImageAddress) {
+      renderBadge('1688 返回了无效图搜地址，正在重新触发上传', 'warning')
+      window.location.replace(build1688TaskUploadEntryUrl(sourceImageAddress, taskToken))
+      return
+    }
+
+    if (activateImageSearchResultLinks()) {
+      renderCollectBadge()
+      return
+    }
+
+    if (!sourceImageAddress) {
+      renderBadge('当前图搜页未携带待上传主图，无法触发以图搜款', 'warning')
+      return
+    }
+    renderBadge('已接收 1688 采集任务，正在上传主图触发图搜', 'success')
     window.setTimeout(() => {
       ensureImageSearchTriggered(taskToken).catch((error) => {
         const message = error?.message || '1688 图搜补传图片失败'
@@ -425,7 +445,7 @@
 
   function decorateDetailLinks() {
     const taskToken = currentTaskContext?.taskToken || getCollectTaskTokenFromUrl()
-    if (!taskToken) {
+    if (!taskToken || !isUploadedImageSearchResultPage()) {
       return
     }
     Array.from(document.querySelectorAll('a[href]')).forEach((anchor) => {
@@ -449,18 +469,23 @@
     document.addEventListener('click', decorateClickLink, true)
   }
 
+  function activateImageSearchResultLinks() {
+    if (!isUploadedImageSearchResultPage()) {
+      return false
+    }
+    decorateDetailLinks()
+    observeDetailLinks()
+    return true
+  }
+
   async function ensureImageSearchTriggered(taskToken) {
-    const imageAddress = getImageAddressFromUrl() || String(currentTaskContext?.mainImageUrl || '').trim()
-    if (!taskToken || !imageAddress) {
+    if (activateImageSearchResultLinks()) {
       return
     }
 
-    for (let i = 0; i < 5; i += 1) {
-      if (hasImageSearchResults()) {
-        decorateDetailLinks()
-        return
-      }
-      await sleep(700)
+    const imageAddress = getSourceImageAddressFromUrl() || String(currentTaskContext?.mainImageUrl || '').trim()
+    if (!taskToken || !imageAddress) {
+      return
     }
 
     const currentKey = `${taskToken}:${imageAddress}`
@@ -482,11 +507,13 @@
 
     try {
       const uploadResult = await uploadImageWith1688Mtop(response.data.dataUrl)
-      if (uploadResult?.imageId) {
+      const uploadResultTarget = getUsableUploadResultTarget(uploadResult)
+      if (uploadResultTarget) {
         renderBadge('已上传图片，正在进入 1688 图搜结果', 'success')
-        window.location.href = build1688ImageResultUrl(uploadResult.imageId, taskToken)
+        window.location.href = build1688ImageResultUrl(uploadResultTarget, taskToken)
         return
       }
+      throw new Error('1688 mtop 未返回可用于图搜的图片地址')
     } catch (error) {
       renderBadge('mtop 上传失败，改用页面上传控件兜底', 'warning')
     }
@@ -511,12 +538,12 @@
     showToast('已补传图片触发 1688 图搜', 'success')
 
     await sleep(1200)
-    decorateDetailLinks()
-    if (!hasImageSearchResults()) {
-      clickActionButton(['搜索', '搜同款', '找相似'])
-      await sleep(1200)
-      decorateDetailLinks()
+    if (activateImageSearchResultLinks()) {
+      return
     }
+    clickActionButton(['搜索', '搜同款', '找相似'])
+    await sleep(1200)
+    activateImageSearchResultLinks()
   }
 
   async function uploadImageWith1688Mtop(dataUrl) {
@@ -577,24 +604,162 @@
     })
   }
 
-  function build1688ImageResultUrl(imageId, taskToken) {
+  function build1688ImageResultUrl(uploadTarget, taskToken) {
     const url = new URL('https://s.1688.com/shen/sell_offer.htm')
     url.searchParams.set('tab', 'imageSearch')
-    url.searchParams.set('imageType', 'oss')
-    url.searchParams.set('imageAddress', imageId)
+    if (uploadTarget?.type === 'imageId') {
+      url.searchParams.set('imageAddress', '')
+      url.searchParams.set('imageId', uploadTarget.value)
+      url.searchParams.set('imageIdList', uploadTarget.value)
+    } else {
+      const imageAddress = String(uploadTarget?.value || uploadTarget || '').trim()
+      if (!isHTTPURL(imageAddress)) {
+        url.searchParams.set('imageType', 'oss')
+      }
+      url.searchParams.set('imageAddress', imageAddress)
+    }
     url.searchParams.set('spm', 'a261y.7663282.imagesearch.upload')
     url.searchParams.set('scene', 'same_shop_search')
     url.searchParams.set(COLLECT_TASK_PARAM, taskToken)
     return url.toString()
   }
 
-  function getImageAddressFromUrl() {
+  function build1688ImageAddressResultUrl(imageAddress, taskToken) {
+    return build1688ImageResultUrl({
+      type: 'imageAddress',
+      value: imageAddress
+    }, taskToken)
+  }
+
+  function build1688ImageIdResultUrl(imageId, taskToken) {
+    return build1688ImageResultUrl({
+      type: 'imageId',
+      value: imageId
+    }, taskToken)
+  }
+
+  function build1688TaskUploadEntryUrl(imageAddress, taskToken) {
+    const url = new URL('https://s.1688.com/shen/sell_offer.htm')
+    url.searchParams.set('tab', 'imageSearch')
+    url.searchParams.set(COLLECT_TASK_PARAM, taskToken)
+    url.searchParams.set(SOURCE_IMAGE_PARAM, imageAddress)
+    return url.toString()
+  }
+
+  function isHTTPURL(value) {
     try {
-      const currentUrl = new URL(window.location.href)
+      const parsed = new URL(String(value || '').trim())
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch (error) {
+      return false
+    }
+  }
+
+  function isUsable1688ResultImageAddress(value) {
+    const imageAddress = String(value || '').trim()
+    if (!imageAddress || imageAddress === '0' || /^\d+$/.test(imageAddress)) {
+      return false
+    }
+    return !isHTTPURL(imageAddress)
+  }
+
+  function isUsable1688ImageId(value) {
+    return /^[1-9]\d{5,}$/.test(String(value || '').trim())
+  }
+
+  function isUploadedImageSearchResultPage(rawUrl) {
+    try {
+      const currentUrl = new URL(rawUrl || window.location.href)
+      const imageAddress = String(currentUrl.searchParams.get('imageAddress') || '').trim()
+      const imageId = String(currentUrl.searchParams.get('imageId') || '').trim()
+      const imageIdList = String(currentUrl.searchParams.get('imageIdList') || '').trim()
+      const isImageAddressResult = String(currentUrl.searchParams.get('imageType') || '').trim() === 'oss' &&
+        isUsable1688ResultImageAddress(imageAddress)
+      const isImageIdResult = isUsable1688ImageId(imageId) &&
+        (!imageIdList || imageIdList.split(',').map((item) => item.trim()).includes(imageId))
+      return currentUrl.host === 's.1688.com' &&
+        /\/shen\/sell_offer\.html?$/i.test(currentUrl.pathname) &&
+        String(currentUrl.searchParams.get('tab') || '').trim() === 'imageSearch' &&
+        (isImageAddressResult || isImageIdResult)
+    } catch (error) {
+      return false
+    }
+  }
+
+  function isInvalidUploadedImageSearchResultPage(rawUrl) {
+    try {
+      const currentUrl = new URL(rawUrl || window.location.href)
+      const hasUploadResultParam = (
+        (String(currentUrl.searchParams.get('imageType') || '').trim() === 'oss' && Boolean(String(currentUrl.searchParams.get('imageAddress') || '').trim())) ||
+        Boolean(String(currentUrl.searchParams.get('imageId') || '').trim())
+      )
+      return currentUrl.host === 's.1688.com' &&
+        /\/shen\/sell_offer\.html?$/i.test(currentUrl.pathname) &&
+        String(currentUrl.searchParams.get('tab') || '').trim() === 'imageSearch' &&
+        hasUploadResultParam &&
+        !isUploadedImageSearchResultPage(currentUrl.toString())
+    } catch (error) {
+      return false
+    }
+  }
+
+  function getUsableUploadResultTarget(uploadResult) {
+    const imageAddress = getUsableUploadImageAddress(uploadResult)
+    if (imageAddress) {
+      return {
+        type: 'imageAddress',
+        value: imageAddress
+      }
+    }
+    const imageId = String(uploadResult?.imageId || '').trim()
+    if (isUsable1688ImageId(imageId)) {
+      return {
+        type: 'imageId',
+        value: imageId
+      }
+    }
+    return null
+  }
+
+  function getUsableUploadImageAddress(uploadResult) {
+    const candidates = [
+      uploadResult?.imageAddress,
+      uploadResult?.imageUrl,
+      uploadResult?.url,
+      uploadResult?.key,
+      uploadResult?.objectKey,
+      uploadResult?.name
+    ]
+    return candidates
+      .map((value) => String(value || '').trim())
+      .find((value) => isUsable1688ResultImageAddress(value)) || ''
+  }
+
+  function getImageAddressFromUrl(rawUrl) {
+    try {
+      const currentUrl = new URL(rawUrl || window.location.href)
       return String(currentUrl.searchParams.get('imageAddress') || '').trim()
     } catch (error) {
       return ''
     }
+  }
+
+  function getSourceImageAddressFromUrl(rawUrl) {
+    try {
+      const currentUrl = new URL(rawUrl || window.location.href)
+      const sourceImageAddress = String(currentUrl.searchParams.get(SOURCE_IMAGE_PARAM) || '').trim()
+      if (isHTTPURL(sourceImageAddress)) {
+        return sourceImageAddress
+      }
+      const imageAddress = getImageAddressFromUrl(currentUrl.toString())
+      return isHTTPURL(imageAddress) ? imageAddress : ''
+    } catch (error) {
+      return ''
+    }
+  }
+
+  function shouldUploadImageForSearch(rawUrl) {
+    return !isUploadedImageSearchResultPage(rawUrl) && Boolean(getSourceImageAddressFromUrl(rawUrl))
   }
 
   function hasImageSearchResults() {
@@ -651,7 +816,7 @@
 
   function decorateClickLink(event) {
     const taskToken = currentTaskContext?.taskToken || getCollectTaskTokenFromUrl()
-    if (!taskToken) {
+    if (!taskToken || !isUploadedImageSearchResultPage()) {
       return
     }
     const anchor = event.target?.closest?.('a[href]')
@@ -865,6 +1030,19 @@
 
   function sleep(ms) {
     return new Promise((resolve) => window.setTimeout(resolve, ms))
+  }
+
+  function installTestHooks() {
+    window.__amazonCollector1688TestHooks = {
+      build1688ImageAddressResultUrl,
+      build1688ImageIdResultUrl,
+      getUsableUploadImageAddress,
+      getUsableUploadResultTarget,
+      getSourceImageAddressFromUrl,
+      isInvalidUploadedImageSearchResultPage,
+      isUploadedImageSearchResultPage,
+      shouldUploadImageForSearch
+    }
   }
 
   function showToast(message, tone) {
