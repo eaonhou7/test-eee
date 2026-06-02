@@ -1750,7 +1750,7 @@
 
   const get1688ImageSearchUrl = (imageUrl, taskToken = '') => {
     const trimmed = String(imageUrl || '').trim()
-    const url = new URL('https://s.1688.com/shen/sell_offer.htm')
+    const url = new URL('https://s.1688.com/shen/sell_offer.html')
     url.searchParams.set('tab', 'imageSearch')
     if (String(taskToken || '').trim()) {
       url.searchParams.set('__gva1688Task', String(taskToken || '').trim())

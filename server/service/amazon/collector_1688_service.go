@@ -1259,7 +1259,7 @@ func normalizePublicImageURL(rawURL string) (string, error) {
 }
 
 func build1688TaskSearchURL(imageURL, taskToken string) string {
-	return "https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&__gva1688Task=" +
+	return "https://s.1688.com/shen/sell_offer.html?tab=imageSearch&__gva1688Task=" +
 		url.QueryEscape(strings.TrimSpace(taskToken)) +
 		"&__gva1688Image=" +
 		url.QueryEscape(strings.TrimSpace(imageURL))

@@ -43,7 +43,7 @@ func TestCollector1688CreateTaskReturnsSearchURLAndSystemCode(t *testing.T) {
 	if !strings.Contains(result.SearchURL, "__gva1688Task=") {
 		t.Fatalf("expected search url with task token, got %s", result.SearchURL)
 	}
-	if !strings.HasPrefix(result.SearchURL, "https://s.1688.com/shen/sell_offer.htm?") {
+	if !strings.HasPrefix(result.SearchURL, "https://s.1688.com/shen/sell_offer.html?") {
 		t.Fatalf("expected search url to use current 1688 image search entry, got %s", result.SearchURL)
 	}
 	parsedURL, err := url.Parse(result.SearchURL)

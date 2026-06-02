@@ -8,7 +8,7 @@ const scriptPath = fileURLToPath(new URL('./content-1688.js', import.meta.url))
 const scriptSource = fs.readFileSync(scriptPath, 'utf8')
 
 function loadHooks() {
-  const initialUrl = new URL('https://s.1688.com/shen/sell_offer.htm?tab=imageSearch')
+  const initialUrl = new URL('https://s.1688.com/shen/sell_offer.html?tab=imageSearch')
   const window = {
     __AMAZON_COLLECTOR_1688_TEST__: true,
     location: {
@@ -30,7 +30,7 @@ function loadHooks() {
 test('1688 source image task url triggers upload flow', () => {
   const hooks = loadHooks()
   const sourceImageUrl = 'https://m.media-amazon.com/images/I/source.jpg'
-  const searchUrl = `https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&__gva1688Task=task-1&__gva1688Image=${encodeURIComponent(sourceImageUrl)}`
+  const searchUrl = `https://s.1688.com/shen/sell_offer.html?tab=imageSearch&__gva1688Task=task-1&__gva1688Image=${encodeURIComponent(sourceImageUrl)}`
 
   assert.equal(hooks.getSourceImageAddressFromUrl(searchUrl), sourceImageUrl)
   assert.equal(hooks.isUploadedImageSearchResultPage(searchUrl), false)
@@ -39,7 +39,7 @@ test('1688 source image task url triggers upload flow', () => {
 
 test('1688 oss image result page is safe to decorate', () => {
   const hooks = loadHooks()
-  const resultUrl = 'https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&imageType=oss&imageAddress=img/search/O1CN01abc.jpg&__gva1688Task=task-1'
+  const resultUrl = 'https://s.1688.com/shen/sell_offer.html?tab=imageSearch&imageType=oss&imageAddress=img/search/O1CN01abc.jpg&__gva1688Task=task-1'
 
   assert.equal(hooks.getSourceImageAddressFromUrl(resultUrl), '')
   assert.equal(hooks.isUploadedImageSearchResultPage(resultUrl), true)
@@ -49,7 +49,7 @@ test('1688 oss image result page is safe to decorate', () => {
 
 test('1688 mtop imageId result page is safe to decorate', () => {
   const hooks = loadHooks()
-  const resultUrl = 'https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&imageAddress=&imageId=1792708757601593298&spm=a26352.13672862.searchbox.input&imageIdList=1792708757601593298&__gva1688Task=task-1'
+  const resultUrl = 'https://s.1688.com/shen/sell_offer.html?tab=imageSearch&imageAddress=&imageId=1792708757601593298&spm=a26352.13672862.searchbox.input&imageIdList=1792708757601593298&__gva1688Task=task-1'
 
   assert.equal(hooks.getSourceImageAddressFromUrl(resultUrl), '')
   assert.equal(hooks.isUploadedImageSearchResultPage(resultUrl), true)
@@ -59,7 +59,7 @@ test('1688 mtop imageId result page is safe to decorate', () => {
 
 test('1688 numeric oss imageAddress is treated as invalid result page', () => {
   const hooks = loadHooks()
-  const badResultUrl = 'https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&imageType=oss&imageAddress=1792708757601593298&__gva1688Task=task-1'
+  const badResultUrl = 'https://s.1688.com/shen/sell_offer.html?tab=imageSearch&imageType=oss&imageAddress=1792708757601593298&__gva1688Task=task-1'
 
   assert.equal(hooks.isUploadedImageSearchResultPage(badResultUrl), false)
   assert.equal(hooks.isInvalidUploadedImageSearchResultPage(badResultUrl), true)
@@ -69,7 +69,7 @@ test('1688 numeric oss imageAddress is treated as invalid result page', () => {
 test('1688 native imageAddress with external url is not treated as a result page', () => {
   const hooks = loadHooks()
   const sourceImageUrl = 'https://img.alicdn.com/example-main.jpg'
-  const legacyUrl = `https://s.1688.com/shen/sell_offer.htm?tab=imageSearch&imageAddress=${encodeURIComponent(sourceImageUrl)}&__gva1688Task=task-1`
+  const legacyUrl = `https://s.1688.com/shen/sell_offer.html?tab=imageSearch&imageAddress=${encodeURIComponent(sourceImageUrl)}&__gva1688Task=task-1`
 
   assert.equal(hooks.getSourceImageAddressFromUrl(legacyUrl), sourceImageUrl)
   assert.equal(hooks.isUploadedImageSearchResultPage(legacyUrl), false)
@@ -89,6 +89,7 @@ test('1688 mtop numeric image id is used as imageId, not imageAddress', () => {
   assert.equal(hooks.getUsableUploadImageAddress({ key: 'img/search/O1CN01abc.jpg' }), 'img/search/O1CN01abc.jpg')
   assert.equal(hooks.getUsableUploadImageAddress({ imageUrl: 'https://cbu01.alicdn.com/img/example.jpg' }), '')
   assert.equal(parsed.searchParams.get('imageAddress'), '')
+  assert.equal(parsed.pathname, '/shen/sell_offer.html')
   assert.equal(parsed.searchParams.get('imageId'), imageId)
   assert.equal(parsed.searchParams.get('imageIdList'), imageId)
   assert.equal(parsed.searchParams.get('__gva1688Task'), 'task-1')

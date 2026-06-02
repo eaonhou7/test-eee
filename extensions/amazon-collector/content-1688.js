@@ -605,7 +605,7 @@
   }
 
   function build1688ImageResultUrl(uploadTarget, taskToken) {
-    const url = new URL('https://s.1688.com/shen/sell_offer.htm')
+    const url = new URL('https://s.1688.com/shen/sell_offer.html')
     url.searchParams.set('tab', 'imageSearch')
     if (uploadTarget?.type === 'imageId') {
       url.searchParams.set('imageAddress', '')
@@ -639,7 +639,7 @@
   }
 
   function build1688TaskUploadEntryUrl(imageAddress, taskToken) {
-    const url = new URL('https://s.1688.com/shen/sell_offer.htm')
+    const url = new URL('https://s.1688.com/shen/sell_offer.html')
     url.searchParams.set('tab', 'imageSearch')
     url.searchParams.set(COLLECT_TASK_PARAM, taskToken)
     url.searchParams.set(SOURCE_IMAGE_PARAM, imageAddress)
