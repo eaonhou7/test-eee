@@ -85,6 +85,7 @@ rm_file/
 /deploy/windows-static/tmp/static-runtime/pids/
 /deploy/windows-static/tmp/static-runtime/go-cache/
 /deploy/windows-static/tmp/static-runtime/go-mod/
+/deploy/windows-static/tmp/static-runtime/*-runner.ps1
 /deploy/windows-static/tmp/windows-lowmem-deploy/
 
 # Local database files

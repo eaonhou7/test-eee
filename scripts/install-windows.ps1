@@ -4,7 +4,7 @@ param(
   [string]$Root = "C:\Users\Administrator\Desktop\eaon\system",
   [string]$AppName = "test-eee-git",
   [string]$GitRepoUrl = "https://github.com/eaonhou7/test-eee.git",
-  [string]$GitBranch = "",
+  [string]$GitBranch = "main",
   [string]$MySqlRootPassword = "123456a",
   [string]$AdminPassword = "123456",
   [int]$ApiPort = 9999,
@@ -12,6 +12,7 @@ param(
   [switch]$BuildOnTarget,
   [string]$PrebuiltRelativePath = "deploy\windows-static",
   [switch]$Offline,
+  [switch]$KeepInstallers,
   [switch]$SkipGitPull,
   [switch]$ResetMySqlData
 )
@@ -232,6 +233,112 @@ function Test-PrebuiltStaticPackage {
     (Test-Path -LiteralPath (Join-Path $Path "web\dist\index.html")) -and
     (Test-Path -LiteralPath (Join-Path $Path "tmp\static-runtime\bin\gva-server.exe"))
   )
+}
+
+function Get-EffectiveGitBranch {
+  if ([string]::IsNullOrWhiteSpace($GitBranch)) {
+    return "main"
+  }
+  return $GitBranch.Trim()
+}
+
+function ConvertTo-GitPath {
+  param([Parameter(Mandatory = $true)][string]$Path)
+  return (($Path -replace "\\", "/").Trim("/"))
+}
+
+function Get-PrebuiltSparsePaths {
+  return @(
+    (ConvertTo-GitPath -Path $PrebuiltRelativePath),
+    "scripts/win-lowmem-deploy.ps1"
+  )
+}
+
+function Invoke-GitRequired {
+  param(
+    [Parameter(Mandatory = $true)][string]$Git,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [Parameter(Mandatory = $true)][string]$Description
+  )
+
+  $exitCode = Invoke-ExternalCommand -Path $Git -Arguments $Arguments
+  if ($exitCode -ne 0) {
+    Fail "$Description failed with exit code $exitCode."
+  }
+}
+
+function Enable-PrebuiltSparseCheckout {
+  param(
+    [Parameter(Mandatory = $true)][string]$Git,
+    [Parameter(Mandatory = $true)][string]$CheckoutPath
+  )
+
+  $sparsePaths = Get-PrebuiltSparsePaths
+  Write-InstallLog "Enabling sparse checkout for: $($sparsePaths -join ', ')"
+  Invoke-GitRequired `
+    -Git $Git `
+    -Arguments @("-C", $CheckoutPath, "sparse-checkout", "init", "--no-cone") `
+    -Description "git sparse-checkout init"
+  Invoke-GitRequired `
+    -Git $Git `
+    -Arguments (@("-C", $CheckoutPath, "sparse-checkout", "set") + $sparsePaths) `
+    -Description "git sparse-checkout set"
+}
+
+function Disable-SparseCheckoutIfNeeded {
+  param(
+    [Parameter(Mandatory = $true)][string]$Git,
+    [Parameter(Mandatory = $true)][string]$CheckoutPath
+  )
+
+  $sparseFile = Join-Path $CheckoutPath ".git\info\sparse-checkout"
+  if (-not (Test-Path -LiteralPath $sparseFile)) {
+    return
+  }
+
+  Write-InstallLog "BuildOnTarget requested; disabling sparse checkout so source files are available."
+  $exitCode = Invoke-ExternalCommand -Path $Git -Arguments @("-C", $CheckoutPath, "sparse-checkout", "disable")
+  if ($exitCode -ne 0) {
+    Write-Warning "git sparse-checkout disable exited with code $exitCode; continuing with fetch/reset."
+  }
+}
+
+function Update-GitCheckout {
+  param(
+    [Parameter(Mandatory = $true)][string]$Git,
+    [Parameter(Mandatory = $true)][string]$CheckoutPath
+  )
+
+  if ($SkipGitPull) {
+    Write-InstallLog "Skipping git update because -SkipGitPull was specified."
+    return
+  }
+  if ($Offline) {
+    Write-InstallLog "Offline mode is enabled; skipping git update."
+    return
+  }
+
+  $branchName = Get-EffectiveGitBranch
+  if ($BuildOnTarget) {
+    Disable-SparseCheckoutIfNeeded -Git $Git -CheckoutPath $CheckoutPath
+    Write-InstallLog "Updating full checkout with shallow fetch from origin/$branchName"
+  } else {
+    Enable-PrebuiltSparseCheckout -Git $Git -CheckoutPath $CheckoutPath
+    Write-InstallLog "Updating sparse prebuilt checkout with shallow fetch from origin/$branchName"
+  }
+
+  Invoke-GitRequired `
+    -Git $Git `
+    -Arguments @("-C", $CheckoutPath, "fetch", "--depth", "1", "origin", $branchName) `
+    -Description "git fetch origin $branchName"
+  Invoke-GitRequired `
+    -Git $Git `
+    -Arguments @("-C", $CheckoutPath, "checkout", "-B", $branchName, "FETCH_HEAD") `
+    -Description "git checkout $branchName"
+  Invoke-GitRequired `
+    -Git $Git `
+    -Arguments @("-C", $CheckoutPath, "reset", "--hard", "FETCH_HEAD") `
+    -Description "git reset to origin/$branchName"
 }
 
 function Invoke-WingetInstall {
@@ -605,6 +712,14 @@ function Resolve-Layout {
 
   New-Item -ItemType Directory -Force -Path $script:Root | Out-Null
   $candidateApp = Join-Path $script:Root $script:AppName
+  $git = Resolve-CommandPath -Names @("git.exe", "git")
+
+  if (-not (Test-ProjectDirectory -Path $candidateApp)) {
+    if ((Test-Path -LiteralPath (Join-Path $candidateApp ".git")) -and $git) {
+      Write-InstallLog "Existing git checkout is missing deployment paths; refreshing checkout layout."
+      Update-GitCheckout -Git $git -CheckoutPath $candidateApp
+    }
+  }
 
   if (-not (Test-ProjectDirectory -Path $candidateApp)) {
     $fallbackApp = Get-ChildItem -LiteralPath $script:Root -Directory -ErrorAction SilentlyContinue |
@@ -625,7 +740,6 @@ function Resolve-Layout {
       Fail "Project checkout was not found and GitRepoUrl is empty. Pass -GitRepoUrl to clone the project."
     }
 
-    $git = Resolve-CommandPath -Names @("git.exe", "git")
     if (-not $git) {
       Fail "Git is required before cloning the project."
     }
@@ -634,16 +748,25 @@ function Resolve-Layout {
       Fail "Target directory exists but is not this project: $candidateApp. Remove it, pass a different -AppName, or pass -Root to another install directory."
     }
 
-    $cloneArgs = @("clone")
-    if (-not [string]::IsNullOrWhiteSpace($GitBranch)) {
-      $cloneArgs += @("--branch", $GitBranch)
+    $branchName = Get-EffectiveGitBranch
+    $cloneArgs = @("clone", "--depth", "1", "--single-branch", "--branch", $branchName)
+    if (-not $BuildOnTarget) {
+      $cloneArgs += @("--filter=blob:none", "--no-checkout")
     }
     $cloneArgs += @($GitRepoUrl, $candidateApp)
 
-    Write-InstallLog "Cloning project from $GitRepoUrl to $candidateApp"
+    Write-InstallLog "Cloning project branch $branchName from $GitRepoUrl to $candidateApp"
     $exitCode = Invoke-ExternalCommand -Path $git -Arguments $cloneArgs
     if ($exitCode -ne 0) {
       Fail "git clone failed with exit code $exitCode. Check network access, repository permissions, or pass a reachable -GitRepoUrl."
+    }
+
+    if (-not $BuildOnTarget) {
+      Enable-PrebuiltSparseCheckout -Git $git -CheckoutPath $candidateApp
+      Invoke-GitRequired `
+        -Git $git `
+        -Arguments @("-C", $candidateApp, "checkout", "-B", $branchName, "origin/$branchName") `
+        -Description "git checkout sparse prebuilt branch $branchName"
     }
   }
 
@@ -651,14 +774,12 @@ function Resolve-Layout {
     Fail "Project directory is missing scripts\win-lowmem-deploy.ps1 after checkout: $candidateApp."
   }
 
-  if ((-not $SkipGitPull) -and (Test-Path -LiteralPath (Join-Path $candidateApp ".git"))) {
-    $git = Resolve-CommandPath -Names @("git.exe", "git")
+  if (Test-Path -LiteralPath (Join-Path $candidateApp ".git")) {
+    if (-not $git) {
+      $git = Resolve-CommandPath -Names @("git.exe", "git")
+    }
     if ($git) {
-      Write-InstallLog "Updating project checkout with git pull --ff-only"
-      $exitCode = Invoke-ExternalCommand -Path $git -Arguments @("-C", $candidateApp, "pull", "--ff-only")
-      if ($exitCode -ne 0) {
-        Write-Warning "git pull failed with exit code $exitCode; continuing with local checkout."
-      }
+      Update-GitCheckout -Git $git -CheckoutPath $candidateApp
     }
   }
 
@@ -738,7 +859,9 @@ function Start-LowMemoryDeployment {
     "-ApiPort",
     "$ApiPort",
     "-MySqlPort",
-    "$MySqlPort"
+    "$MySqlPort",
+    "-GitBranch",
+    (Get-EffectiveGitBranch)
   )
   if ($SkipGitPull) {
     $arguments += "-SkipGitPull"
@@ -756,6 +879,58 @@ function Start-LowMemoryDeployment {
   & $powerShellExe @arguments
   if ($LASTEXITCODE -ne 0) {
     Fail "win-lowmem-deploy.ps1 failed with exit code $LASTEXITCODE."
+  }
+}
+
+function Invoke-WindowsDiskMaintenance {
+  $maintenanceScript = ""
+  if ($script:UsePrebuiltStatic) {
+    $prebuiltMaintenance = Join-Path (Join-Path $script:App $PrebuiltRelativePath) "scripts\windows-disk-maintenance.ps1"
+    if (Test-Path -LiteralPath $prebuiltMaintenance) {
+      $maintenanceScript = $prebuiltMaintenance
+    }
+  }
+
+  if (-not $maintenanceScript) {
+    $projectMaintenance = Join-Path $script:App "scripts\windows-disk-maintenance.ps1"
+    if (Test-Path -LiteralPath $projectMaintenance) {
+      $maintenanceScript = $projectMaintenance
+    }
+  }
+
+  if (-not $maintenanceScript) {
+    Write-Warning "windows-disk-maintenance.ps1 was not found; skipping disk cleanup."
+    return
+  }
+
+  $powerShellExe = Get-PowerShellExecutable
+  $arguments = @(
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    $maintenanceScript,
+    "-Root",
+    $script:Root,
+    "-AppName",
+    $script:AppName,
+    "-MySqlFolderName",
+    $script:MySqlFolderName,
+    "-PrebuiltRelativePath",
+    $PrebuiltRelativePath,
+    "-LogRetentionDays",
+    "7",
+    "-KeepMySqlBackups",
+    "3"
+  )
+  if ($KeepInstallers) {
+    $arguments += "-KeepInstallers"
+  }
+
+  Write-InstallLog "Running light disk maintenance"
+  & $powerShellExe @arguments
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "windows-disk-maintenance.ps1 exited with code $LASTEXITCODE; deployment remains available."
   }
 }
 
@@ -781,7 +956,7 @@ if ($script:UsePrebuiltStatic) {
 } elseif ($BuildOnTarget) {
   Write-InstallLog "BuildOnTarget was specified; installing Go and Node.js for local Windows build"
 } else {
-  Write-Warning "Prebuilt package not found at $prebuiltPath; falling back to Windows target build"
+  Fail "Prebuilt package not found at $prebuiltPath. Run ./scripts/publish-windows-static.sh --push on Mac/Linux and rerun this installer, or rerun with -BuildOnTarget to build on this Windows machine."
 }
 
 if (-not $script:UsePrebuiltStatic) {
@@ -815,6 +990,7 @@ Refresh-ProcessPath -ExtraPaths @(
 
 Validate-Toolchain -RequireBuildToolchain:(-not $script:UsePrebuiltStatic)
 Start-LowMemoryDeployment
+Invoke-WindowsDiskMaintenance
 
 Write-Host ""
 Write-Host "Windows one-click installation is complete:"

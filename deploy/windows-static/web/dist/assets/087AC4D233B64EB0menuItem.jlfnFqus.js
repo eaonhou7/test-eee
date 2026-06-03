@@ -1,4 +1,4 @@
 /*! 
  Build based on gin-vue-admin 
- Time : 1780498415000 */
+ Time : 1780499816000 */
 import{j as p,k as d}from"./087AC4D233B64EB0index.BWg6RuSE.js";import{i as _,ag as a,o as t,M as o,R as n,Z as y,c as g,J as I,$ as s,a0 as r,u as h,U as x,j as k}from"./087AC4D233B64EB0vendor-image-tools.BkKmqM0E.js";import"./087AC4D233B64EB0vendor-form-create.Dj_l66TJ.js";import"./087AC4D233B64EB0vendor-ace.B_H-8ob6.js";const D=Object.assign({name:"MenuItem"},{__name:"menuItem",props:{routerInfo:{default:function(){return null},type:Object}},setup(e){const i=p(),{config:l}=d(i),c=_("isCollapse",{default:!1}),m=k(()=>l.value.layout_side_item_height+"px");return(j,C)=>{const u=a("el-icon"),f=a("el-menu-item");return t(),o(f,{index:e.routerInfo.name,style:x({height:m.value})},{title:n(()=>[s(r(e.routerInfo.meta.title),1)]),default:n(()=>[e.routerInfo.meta.icon?(t(),o(u,{key:0},{default:n(()=>[(t(),o(y(e.routerInfo.meta.icon)))]),_:1})):(t(),g(I,{key:1},[s(r(h(c)?e.routerInfo.meta.title[0]:""),1)],64))]),_:1},8,["index","style"])}}});export{D as default};

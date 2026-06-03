@@ -512,6 +512,9 @@ function Start-StaticServer {
   Start-Runner -Name "static-server" -PidFile $pidFile -Lines @(
     '$ErrorActionPreference = "Stop"',
     '$env:GVA_CONFIG = "config.local.yaml"',
+    '$env:GOMAXPROCS = "2"',
+    '$env:GOMEMLIMIT = "512MiB"',
+    '$env:GOGC = "75"',
     ('$env:GVA_STATIC_ROOT = ' + (ConvertTo-PSLiteral $WebDist)),
     "Set-Location -LiteralPath $(ConvertTo-PSLiteral $ServerDir)",
     "& $(ConvertTo-PSLiteral $ServerBin) *>> $(ConvertTo-PSLiteral $logFile)"

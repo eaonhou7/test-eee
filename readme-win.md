@@ -14,7 +14,9 @@
 ./scripts/publish-windows-static.sh --push
 ```
 
-如果目标机器可以联网，可以把 `install-windows.ps1` 单独放到桌面运行。脚本会自动申请管理员权限，安装或复用 Git，把项目 clone 到安装根目录，检测 `deploy\windows-static` 预构建产物，再安装或复用 MySQL zip 版和 Microsoft Visual C++ Redistributable x64，最后调用低内存静态部署流程。
+如需进一步压缩 `gva-server.exe`，并且本机已安装 UPX，可以改用 `./scripts/publish-windows-static.sh --upx --push`。默认不使用 UPX，以减少 Windows 杀毒软件误报概率。
+
+如果目标机器可以联网，可以把 `install-windows.ps1` 单独放到桌面运行。脚本会自动申请管理员权限，安装或复用 Git，默认用 `--depth 1 --single-branch --branch main` 浅克隆，并在预构建模式下只 sparse checkout `deploy/windows-static` 和低内存部署入口。随后脚本会检测 `deploy\windows-static` 预构建产物，再安装或复用 MySQL zip 版和 Microsoft Visual C++ Redistributable x64，最后调用低内存静态部署流程。
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
@@ -25,14 +27,16 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 ```powershell
 .\install-windows.ps1 -GitRepoUrl "https://github.com/eaonhou7/test-eee.git"
+.\install-windows.ps1 -GitBranch main
 .\install-windows.ps1 -MySqlRootPassword "你的 MySQL root 密码"
 .\install-windows.ps1 -SkipGitPull
 .\install-windows.ps1 -Offline
+.\install-windows.ps1 -KeepInstallers
 .\install-windows.ps1 -ResetMySqlData
 .\install-windows.ps1 -BuildOnTarget
 ```
 
-默认会 clone `https://github.com/eaonhou7/test-eee.git` 到 `C:\Users\Administrator\Desktop\eaon\system\test-eee-git`。如果存在完整的 `deploy\windows-static`，会自动复用预构建的 `web\dist` 和 `gva-server.exe`；只有传入 `-BuildOnTarget` 时才在 Windows 目标机安装 Go/Node 并现场构建。`-Offline` 模式不会使用 `winget`、联网下载或 `git clone`，需要提前把项目目录、`PortableGit`、`vc_redist.x64*.exe`、`mysql-8.0.*-winx64.zip` 或已解压的 `mysql-8.0.*-winx64` 放到安装根目录。
+默认会 clone `https://github.com/eaonhou7/test-eee.git` 到 `C:\Users\Administrator\Desktop\eaon\system\test-eee-git`。如果存在完整的 `deploy\windows-static`，会自动复用预构建的 `web\dist` 和 `gva-server.exe`；如果预构建产物不存在，脚本会要求先在 Mac/Linux 执行 `./scripts/publish-windows-static.sh --push`。只有传入 `-BuildOnTarget` 时才在 Windows 目标机安装 Go/Node 并现场构建。`-Offline` 模式不会使用 `winget`、联网下载或 `git clone`，需要提前把项目目录、`PortableGit`、`vc_redist.x64*.exe`、`mysql-8.0.*-winx64.zip` 或已解压的 `mysql-8.0.*-winx64` 放到安装根目录。部署成功后会自动清理旧日志、旧 MySQL data 备份和安装包；如果要保留安装包，请加 `-KeepInstallers`。
 
 ## 1. 环境准备
 

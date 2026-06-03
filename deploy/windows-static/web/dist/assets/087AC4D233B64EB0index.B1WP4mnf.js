@@ -1,4 +1,4 @@
 /*! 
  Build based on gin-vue-admin 
- Time : 1780498415000 */
+ Time : 1780499816000 */
 import{E as s}from"./087AC4D233B64EB0vendor-echarts.BObKl7Cw.js";import{t as r,l as u}from"./087AC4D233B64EB0index.BWg6RuSE.js";import{s as i,n as o,o as l,M as h,U as d,u as f,_ as c,r as p}from"./087AC4D233B64EB0vendor-image-tools.BkKmqM0E.js";const n=i(0),a=i(0),m=e=>{const t=()=>{n.value=window.innerWidth,a.value=window.innerHeight,e&&typeof e=="function"&&e(n.value,a.value)};return r(t),u("resize",t,{passive:!0}),{width:n,height:a}},R={__name:"index",props:{options:{type:Object,default(){return{}}},autoResize:{type:Boolean,default:!0},width:{type:String,default:"100%"},height:{type:String,default:"100%"}},setup(e){const t=p(!1);return o(()=>{t.value=!0}),m(()=>{t.value=!1,o(()=>{t.value=!0})}),(v,w)=>t.value?(l(),h(f(s),{key:0,option:e.options,autoresize:e.autoResize,style:d({width:e.width,height:e.height})},null,8,["option","autoresize","style"])):c("",!0)}};export{R as _};

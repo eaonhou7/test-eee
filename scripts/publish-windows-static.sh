@@ -6,6 +6,7 @@ DEPLOY_DIR="${ROOT_DIR}/deploy/windows-static"
 BUILD_DIR="${ROOT_DIR}/tmp/publish-windows-static"
 SERVER_BIN="${BUILD_DIR}/gva-server.exe"
 PUSH=0
+USE_UPX=0
 COMMIT_MESSAGE=""
 
 log() {
@@ -19,12 +20,13 @@ fail() {
 
 usage() {
   cat <<'USAGE'
-Usage: ./scripts/publish-windows-static.sh [--push] [--message "commit message"]
+Usage: ./scripts/publish-windows-static.sh [--push] [--upx] [--message "commit message"]
 
 Builds a Windows static deployment tree under deploy/windows-static.
 
 Options:
   --push              git add -f, commit, and push generated artifacts to main
+  --upx               compress gva-server.exe only when upx is installed locally
   --message MESSAGE   commit message used with --push
   -h, --help          show this help
 USAGE
@@ -34,6 +36,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --push)
       PUSH=1
+      shift
+      ;;
+    --upx)
+      USE_UPX=1
       shift
       ;;
     --message|-m)
@@ -99,9 +105,18 @@ log "Cross-compiling Windows server binary"
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 pushd "${ROOT_DIR}/server" >/dev/null
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-X main.Version=${VERSION}" -o "${SERVER_BIN}" .
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.Version=${VERSION}" -o "${SERVER_BIN}" .
 popd >/dev/null
 [[ -f "${SERVER_BIN}" ]] || fail "server binary was not generated: ${SERVER_BIN}"
+
+if [[ "${USE_UPX}" == "1" ]]; then
+  if command -v upx >/dev/null 2>&1; then
+    log "Compressing server binary with UPX"
+    upx --best --lzma "${SERVER_BIN}" || log "UPX compression failed; leaving stripped binary in place"
+  else
+    log "--upx was requested, but upx was not found; leaving stripped binary uncompressed"
+  fi
+fi
 
 log "Refreshing ${DEPLOY_DIR}"
 rm -rf "${DEPLOY_DIR}"
@@ -113,6 +128,7 @@ mkdir -p \
 
 cp "${ROOT_DIR}/scripts/static-up.ps1" "${DEPLOY_DIR}/scripts/static-up.ps1"
 cp "${ROOT_DIR}/scripts/static-down.ps1" "${DEPLOY_DIR}/scripts/static-down.ps1"
+cp "${ROOT_DIR}/scripts/windows-disk-maintenance.ps1" "${DEPLOY_DIR}/scripts/windows-disk-maintenance.ps1"
 cp "${ROOT_DIR}/server/config.local.example.yaml" "${DEPLOY_DIR}/server/config.local.example.yaml"
 copy_dir "${ROOT_DIR}/server/resource" "${DEPLOY_DIR}/server/resource"
 copy_dir "${ROOT_DIR}/web/dist" "${DEPLOY_DIR}/web/dist"
@@ -141,7 +157,7 @@ if [[ "${PUSH}" != "1" ]]; then
 fi
 
 log "Staging generated artifacts"
-git -C "${ROOT_DIR}" add .gitignore readme-win.md scripts/install-windows.ps1 scripts/win-lowmem-deploy.ps1 scripts/publish-windows-static.sh
+git -C "${ROOT_DIR}" add .gitignore readme-win.md scripts/install-windows.ps1 scripts/win-lowmem-deploy.ps1 scripts/windows-disk-maintenance.ps1 scripts/publish-windows-static.sh
 git -C "${ROOT_DIR}" add -f deploy/windows-static
 
 if git -C "${ROOT_DIR}" diff --cached --quiet; then

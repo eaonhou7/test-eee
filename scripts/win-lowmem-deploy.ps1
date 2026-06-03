@@ -24,6 +24,8 @@ param(
   [switch]$UsePrebuiltStatic,
   # 预构建静态部署目录，相对项目根目录。
   [string]$PrebuiltRelativePath = "deploy\windows-static",
+  # 目标机默认只拉 main 的部署产物；直接调用本脚本时可覆盖。
+  [string]$GitBranch = "main",
   # 备份并重新初始化 MySQL data 目录；仅首次部署或确认不要旧数据时使用。
   [switch]$ResetMySqlData,
   # 跳过 git pull，适合目标机完全离线时使用。
@@ -211,6 +213,47 @@ function Invoke-ExternalCommand {
     $ErrorActionPreference = $previousErrorActionPreference
   }
   return [int]$exitCode
+}
+
+function ConvertTo-GitPath {
+  param([Parameter(Mandatory = $true)][string]$Path)
+  return (($Path -replace "\\", "/").Trim("/"))
+}
+
+function Get-PrebuiltSparsePaths {
+  return @(
+    (ConvertTo-GitPath -Path $PrebuiltRelativePath),
+    "scripts/win-lowmem-deploy.ps1"
+  )
+}
+
+function Invoke-GitChecked {
+  param(
+    [Parameter(Mandatory = $true)][string]$Git,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [Parameter(Mandatory = $true)][string]$Description
+  )
+
+  $exitCode = Invoke-ExternalCommand -Path $Git -Arguments $Arguments
+  if ($exitCode -ne 0) {
+    Write-Warning "$Description failed with exit code $exitCode"
+    return $false
+  }
+  return $true
+}
+
+function Enable-PrebuiltSparseCheckout {
+  param(
+    [Parameter(Mandatory = $true)][string]$Git,
+    [Parameter(Mandatory = $true)][string]$CheckoutPath
+  )
+
+  $sparsePaths = Get-PrebuiltSparsePaths
+  Write-DeployLog "enabling sparse checkout for: $($sparsePaths -join ', ')"
+  if (-not (Invoke-GitChecked -Git $Git -Arguments @("-C", $CheckoutPath, "sparse-checkout", "init", "--no-cone") -Description "git sparse-checkout init")) {
+    return $false
+  }
+  return (Invoke-GitChecked -Git $Git -Arguments (@("-C", $CheckoutPath, "sparse-checkout", "set") + $sparsePaths) -Description "git sparse-checkout set")
 }
 
 # 如果 Go/Node 缺失，则从离线根目录里的 MSI 安装包静默安装。
@@ -426,6 +469,81 @@ function Initialize-MySqlDataIfNeeded {
   }
 }
 
+# MySQL base arguments used by both low-memory and conservative fallback starts.
+function Get-MySqlBaseArguments {
+  return @(
+    "--no-defaults",
+    "--basedir=$MySqlHome",
+    "--datadir=$MySqlData",
+    "--port=$MySqlPort",
+    "--bind-address=127.0.0.1",
+    "--character-set-server=utf8mb4",
+    "--collation-server=utf8mb4_unicode_ci",
+    "--console"
+  )
+}
+
+function Get-MySqlLowMemoryArguments {
+  $arguments = Get-MySqlBaseArguments
+  $arguments += @(
+    "--performance-schema=OFF",
+    "--innodb-buffer-pool-size=128M",
+    "--max-connections=25",
+    "--table-open-cache=128",
+    "--tmp-table-size=16M",
+    "--max-heap-table-size=16M",
+    "--sort-buffer-size=262144",
+    "--join-buffer-size=262144",
+    "--read-buffer-size=131072",
+    "--read-rnd-buffer-size=262144",
+    "--innodb-flush-log-at-trx-commit=2"
+  )
+  return $arguments
+}
+
+function Start-MySqlAndWait {
+  param(
+    [Parameter(Mandatory = $true)][string]$ModeName,
+    [Parameter(Mandatory = $true)][string[]]$Arguments
+  )
+
+  Write-DeployLog "starting portable MySQL (${ModeName})"
+  $mysqlOutLog = Join-Path $MySqlLogDir "mysqld.${ModeName}.out.log"
+  $mysqlErrLog = Join-Path $MySqlLogDir "mysqld.${ModeName}.err.log"
+  Set-Content -LiteralPath $mysqlOutLog -Value "" -Encoding UTF8
+  Set-Content -LiteralPath $mysqlErrLog -Value "" -Encoding UTF8
+
+  $mysqlProcess = Start-Process -FilePath $script:MySqlDaemonExe `
+    -ArgumentList $Arguments `
+    -RedirectStandardOutput $mysqlOutLog `
+    -RedirectStandardError $mysqlErrLog `
+    -WindowStyle Hidden `
+    -PassThru
+
+  for ($index = 1; $index -le 45; $index++) {
+    if (Test-MySqlPing -UsePassword) {
+      return @{ AuthMode = "password"; Process = $mysqlProcess; OutLog = $mysqlOutLog; ErrLog = $mysqlErrLog }
+    }
+    if (Test-MySqlPing) {
+      return @{ AuthMode = "nopassword"; Process = $mysqlProcess; OutLog = $mysqlOutLog; ErrLog = $mysqlErrLog }
+    }
+    if ($mysqlProcess.HasExited) {
+      Show-FileTail -Path $mysqlErrLog
+      Show-FileTail -Path $mysqlOutLog
+      return @{ AuthMode = ""; Process = $mysqlProcess; OutLog = $mysqlOutLog; ErrLog = $mysqlErrLog }
+    }
+    Start-Sleep -Seconds 2
+  }
+
+  Show-FileTail -Path $mysqlErrLog
+  Show-FileTail -Path $mysqlOutLog
+  if (-not $mysqlProcess.HasExited) {
+    Stop-Process -Id $mysqlProcess.Id -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+  }
+  return @{ AuthMode = ""; Process = $mysqlProcess; OutLog = $mysqlOutLog; ErrLog = $mysqlErrLog }
+}
+
 # 启动 zip 版 MySQL，并等待 127.0.0.1:3306 可连接。
 function Start-PortableMySqlIfNeeded {
   $authMode = Wait-ForMySqlAuthMode -Attempts 3
@@ -437,45 +555,22 @@ function Start-PortableMySqlIfNeeded {
     Fail "port $MySqlPort is already in use by $(Get-PortListenerSummary -Port $MySqlPort). Stop that process, or rerun with -MySqlPort another port."
   }
 
-  Write-DeployLog "starting portable MySQL"
-  $mysqlOutLog = Join-Path $MySqlLogDir "mysqld.out.log"
-  $mysqlErrLog = Join-Path $MySqlLogDir "mysqld.err.log"
-  Set-Content -LiteralPath $mysqlOutLog -Value "" -Encoding UTF8
-  Set-Content -LiteralPath $mysqlErrLog -Value "" -Encoding UTF8
-
-  $mysqlProcess = Start-Process -FilePath $script:MySqlDaemonExe -ArgumentList @(
-    "--no-defaults",
-    "--basedir=$MySqlHome",
-    "--datadir=$MySqlData",
-    "--port=$MySqlPort",
-    "--bind-address=127.0.0.1",
-    "--character-set-server=utf8mb4",
-    "--collation-server=utf8mb4_unicode_ci",
-    "--console"
-  ) `
-    -RedirectStandardOutput $mysqlOutLog `
-    -RedirectStandardError $mysqlErrLog `
-    -WindowStyle Hidden `
-    -PassThru
-
-  for ($index = 1; $index -le 45; $index++) {
-    if (Test-MySqlPing -UsePassword) {
-      return "password"
-    }
-    if (Test-MySqlPing) {
-      return "nopassword"
-    }
-    if ($mysqlProcess.HasExited) {
-      Show-FileTail -Path $mysqlErrLog
-      Show-FileTail -Path $mysqlOutLog
-      Fail "mysqld.exe exited before becoming ready; see logs under $MySqlLogDir"
-    }
-    Start-Sleep -Seconds 2
+  $lowMemoryResult = Start-MySqlAndWait -ModeName "lowmem" -Arguments (Get-MySqlLowMemoryArguments)
+  if ($lowMemoryResult.AuthMode) {
+    return $lowMemoryResult.AuthMode
   }
 
-  Show-FileTail -Path $mysqlErrLog
-  Show-FileTail -Path $mysqlOutLog
-  Fail "MySQL did not become ready on 127.0.0.1:$MySqlPort; see logs under $MySqlLogDir"
+  Write-Warning "MySQL low-memory start failed; retrying once with conservative arguments. Logs are under $MySqlLogDir"
+  if (Test-PortBusy -Port $MySqlPort) {
+    Fail "MySQL low-memory start failed and port $MySqlPort is now busy by $(Get-PortListenerSummary -Port $MySqlPort). See $($lowMemoryResult.ErrLog)"
+  }
+
+  $fallbackResult = Start-MySqlAndWait -ModeName "fallback" -Arguments (Get-MySqlBaseArguments)
+  if ($fallbackResult.AuthMode) {
+    return $fallbackResult.AuthMode
+  }
+
+  Fail "MySQL did not become ready on 127.0.0.1:$MySqlPort. Low-memory log: $($lowMemoryResult.ErrLog). Fallback log: $($fallbackResult.ErrLog)."
 }
 
 # 确保 root 密码正确，并补齐后端配置需要的 root@127.0.0.1 权限。
@@ -568,6 +663,8 @@ function Update-LocalConfig {
       if ($line -match "^\s*db-name:") { "    db-name: amazon_admin"; continue }
       if ($line -match "^\s*username:") { "    username: root"; continue }
       if ($line -match "^\s*password:") { "    password: $MySqlRootPassword"; continue }
+      if ($line -match "^\s*max-idle-conns:") { "    max-idle-conns: 2"; continue }
+      if ($line -match "^\s*max-open-conns:") { "    max-open-conns: 20"; continue }
       if ($line -match "^\s*log-mode:") { "    log-mode: error"; continue }
     }
 
@@ -592,10 +689,31 @@ function Pull-ProjectIfPossible {
     return
   }
 
-  Write-DeployLog "running git pull --ff-only"
-  & $gitCommand.Source -C $App pull --ff-only
-  if ($LASTEXITCODE -ne 0) {
-    Write-Warning "git pull failed; continue with local files in $App"
+  $branchName = if ([string]::IsNullOrWhiteSpace($GitBranch)) { "main" } else { $GitBranch.Trim() }
+  if ($UsePrebuiltStatic) {
+    if (-not (Enable-PrebuiltSparseCheckout -Git $gitCommand.Source -CheckoutPath $App)) {
+      Write-Warning "could not enable sparse checkout; continue with local files in $App"
+      return
+    }
+    Write-DeployLog "updating sparse prebuilt checkout with shallow fetch from origin/$branchName"
+  } else {
+    $sparseFile = Join-Path $App ".git\info\sparse-checkout"
+    if (Test-Path -LiteralPath $sparseFile) {
+      Invoke-GitChecked -Git $gitCommand.Source -Arguments @("-C", $App, "sparse-checkout", "disable") -Description "git sparse-checkout disable" | Out-Null
+    }
+    Write-DeployLog "updating full checkout with shallow fetch from origin/$branchName"
+  }
+
+  if (-not (Invoke-GitChecked -Git $gitCommand.Source -Arguments @("-C", $App, "fetch", "--depth", "1", "origin", $branchName) -Description "git fetch origin $branchName")) {
+    Write-Warning "git fetch failed; continue with local files in $App"
+    return
+  }
+  if (-not (Invoke-GitChecked -Git $gitCommand.Source -Arguments @("-C", $App, "checkout", "-B", $branchName, "FETCH_HEAD") -Description "git checkout $branchName")) {
+    Write-Warning "git checkout failed; continue with local files in $App"
+    return
+  }
+  if (-not (Invoke-GitChecked -Git $gitCommand.Source -Arguments @("-C", $App, "reset", "--hard", "FETCH_HEAD") -Description "git reset to origin/$branchName")) {
+    Write-Warning "git reset failed; continue with local files in $App"
   }
 }
 

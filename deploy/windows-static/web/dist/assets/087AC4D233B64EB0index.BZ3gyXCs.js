@@ -1,6 +1,6 @@
 /*! 
  Build based on gin-vue-admin 
- Time : 1780498415000 */
+ Time : 1780499816000 */
 import{H as F,a as w}from"./087AC4D233B64EB0vendor-form-create.Dj_l66TJ.js";import{ag as j,o as M,c as P,Q as c,R as f,$ as x,u as q,S as z,r as V}from"./087AC4D233B64EB0vendor-image-tools.BkKmqM0E.js";import"./087AC4D233B64EB0vendor-ace.B_H-8ob6.js";const D={class:"form-designer-container"},E={class:"dialog-footer"},H=Object.assign({name:"FormGenerator"},{__name:"index",setup(T){const h=V(null),d=V(!1),v=V(""),C={fieldReadonly:!1,useTemplate:!0},b=r=>r.replace(/([A-Z])/g,"-$1").toLowerCase(),R=(r,o)=>{let n=[],m=[];const u=e=>{if(e.type==="row"){const t=e.props?Object.entries(e.props).map(([a,k])=>`:${a}="${k}"`).join(" "):"";let l=e.children?e.children.map(a=>u(a)).join(`
 `):"";return`
     <el-row ${t}>${l}

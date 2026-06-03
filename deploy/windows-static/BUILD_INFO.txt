@@ -1,6 +1,6 @@
-git_commit=bf4df6fe
+git_commit=d6bd4a39
 git_branch=main
-built_at_utc=2026-06-03T14:53:33Z
+built_at_utc=2026-06-03T15:16:55Z
 builder_os=Darwin
 builder_arch=arm64
 go_version=go version go1.26.2 darwin/arm64
