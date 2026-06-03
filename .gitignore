@@ -67,6 +67,26 @@ rm_file/
 *.7z
 *.rar
 
+# Prebuilt Windows static deployment artifacts.
+# This directory intentionally stores generated dist files and gva-server.exe
+# so low-memory Windows targets can git pull and run without building.
+!/deploy/windows-static/
+!/deploy/windows-static/**
+/deploy/windows-static/server/config.local.yaml
+/deploy/windows-static/server/log/
+/deploy/windows-static/server/latest_log
+/deploy/windows-static/server/uploads/*
+!/deploy/windows-static/server/uploads/
+!/deploy/windows-static/server/uploads/.gitkeep
+!/deploy/windows-static/server/uploads/file/
+/deploy/windows-static/server/uploads/file/*
+!/deploy/windows-static/server/uploads/file/.gitkeep
+/deploy/windows-static/tmp/static-runtime/logs/
+/deploy/windows-static/tmp/static-runtime/pids/
+/deploy/windows-static/tmp/static-runtime/go-cache/
+/deploy/windows-static/tmp/static-runtime/go-mod/
+/deploy/windows-static/tmp/windows-lowmem-deploy/
+
 # Local database files
 *.db
 *.sqlite

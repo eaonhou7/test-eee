@@ -20,6 +20,10 @@ param(
   [int]$MySqlPort = 3306,
   # Microsoft 官方 VC++ x64 运行库下载地址；有网时脚本会自动下载。
   [string]$VcRedistUrl = "https://aka.ms/vc14/vc_redist.x64.exe",
+  # 使用本地或 Git 拉取到的预构建静态部署目录，不在目标机安装 Go/Node 或构建。
+  [switch]$UsePrebuiltStatic,
+  # 预构建静态部署目录，相对项目根目录。
+  [string]$PrebuiltRelativePath = "deploy\windows-static",
   # 备份并重新初始化 MySQL data 目录；仅首次部署或确认不要旧数据时使用。
   [switch]$ResetMySqlData,
   # 跳过 git pull，适合目标机完全离线时使用。
@@ -32,9 +36,10 @@ $ErrorActionPreference = "Stop"
 
 # 计算项目、MySQL 和数据目录路径。
 $App = Join-Path $Root $AppName
+$DeploymentRoot = if ($UsePrebuiltStatic) { Join-Path $App $PrebuiltRelativePath } else { $App }
 $MySqlHome = Join-Path $Root $MySqlFolderName
 $MySqlData = Join-Path $MySqlHome "data"
-$DeployLogDir = Join-Path $App "tmp\windows-lowmem-deploy"
+$DeployLogDir = Join-Path $DeploymentRoot "tmp\windows-lowmem-deploy"
 $MySqlLogDir = Join-Path $DeployLogDir "mysql"
 
 # 统一部署日志前缀。
@@ -515,8 +520,8 @@ function Ensure-ApplicationDatabase {
 
 # 生成并修补 server\config.local.yaml，只改 system.addr 和 MySQL 块里部署必需的字段。
 function Update-LocalConfig {
-  $configTemplate = Join-Path $App "server\config.local.example.yaml"
-  $configFile = Join-Path $App "server\config.local.yaml"
+  $configTemplate = Join-Path $DeploymentRoot "server\config.local.example.yaml"
+  $configFile = Join-Path $DeploymentRoot "server\config.local.yaml"
   if (-not (Test-Path -LiteralPath $configTemplate)) {
     Fail "missing config template: $configTemplate"
   }
@@ -594,14 +599,34 @@ function Pull-ProjectIfPossible {
   }
 }
 
+# 预构建模式要求展开目录已经包含静态资源和 Windows 后端二进制。
+function Ensure-PrebuiltStaticReady {
+  if (-not $UsePrebuiltStatic) {
+    return
+  }
+
+  $requiredPaths = @(
+    (Join-Path $DeploymentRoot "scripts\static-up.ps1"),
+    (Join-Path $DeploymentRoot "scripts\static-down.ps1"),
+    (Join-Path $DeploymentRoot "server\config.local.example.yaml"),
+    (Join-Path $DeploymentRoot "web\dist\index.html"),
+    (Join-Path $DeploymentRoot "tmp\static-runtime\bin\gva-server.exe")
+  )
+  foreach ($requiredPath in $requiredPaths) {
+    if (-not (Test-Path -LiteralPath $requiredPath)) {
+      Fail "prebuilt static deployment is incomplete; missing $requiredPath"
+    }
+  }
+}
+
 # 调用已有 static-up.ps1，真正以 Go 后端 + web\dist 静态文件方式运行。
 function Start-StaticDeployment {
-  $staticUp = Join-Path $App "scripts\static-up.ps1"
+  $staticUp = Join-Path $DeploymentRoot "scripts\static-up.ps1"
   if (-not (Test-Path -LiteralPath $staticUp)) {
     Fail "missing static startup script: $staticUp"
   }
 
-  Set-Location -LiteralPath $App
+  Set-Location -LiteralPath $DeploymentRoot
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 
   $env:MYSQL_PASSWORD = $MySqlRootPassword
@@ -611,12 +636,16 @@ function Start-StaticDeployment {
   $env:MYSQL_DATABASE = "amazon_admin"
   $env:ADMIN_PASSWORD = $AdminPassword
   $env:API_PORT = "$ApiPort"
-  $env:STATIC_BUILD = "1"
-  $env:SERVER_BUILD = "1"
+  $env:STATIC_BUILD = if ($UsePrebuiltStatic) { "0" } else { "1" }
+  $env:SERVER_BUILD = if ($UsePrebuiltStatic) { "0" } else { "1" }
   $env:NODE_OPTIONS = "--max-old-space-size=1536"
   $env:GO_BUILD_P = "1"
 
-  Write-DeployLog "starting low-memory static deployment"
+  if ($UsePrebuiltStatic) {
+    Write-DeployLog "starting prebuilt static deployment from $DeploymentRoot"
+  } else {
+    Write-DeployLog "starting low-memory static deployment"
+  }
   & $staticUp
   if ($LASTEXITCODE -ne 0) {
     Fail "scripts\static-up.ps1 failed"
@@ -630,7 +659,6 @@ if (-not (Test-Path -LiteralPath $App)) {
 if (-not (Test-Path -LiteralPath $MySqlHome)) {
   Fail "MySQL directory not found: $MySqlHome"
 }
-New-Item -ItemType Directory -Force -Path $DeployLogDir, $MySqlLogDir | Out-Null
 
 Add-PathEntry -PathValue (Join-Path $Root "PortableGit\cmd")
 Add-PathEntry -PathValue (Join-Path $Root "PortableGit\bin")
@@ -638,8 +666,12 @@ Add-PathEntry -PathValue (Join-Path $MySqlHome "bin")
 Add-PathEntry -PathValue "C:\Program Files\Go\bin"
 Add-PathEntry -PathValue "C:\Program Files\nodejs"
 
-Install-MsiWhenCommandMissing -CommandName "go" -InstallerFilter "go-installer*.msi" -InstallPath "C:\Program Files\Go\bin"
-Install-MsiWhenCommandMissing -CommandName "node" -InstallerFilter "node-installer*.msi" -InstallPath "C:\Program Files\nodejs"
+if (-not $UsePrebuiltStatic) {
+  Install-MsiWhenCommandMissing -CommandName "go" -InstallerFilter "go-installer*.msi" -InstallPath "C:\Program Files\Go\bin"
+  Install-MsiWhenCommandMissing -CommandName "node" -InstallerFilter "node-installer*.msi" -InstallPath "C:\Program Files\nodejs"
+} else {
+  Write-DeployLog "prebuilt static mode: skipping Go and Node installation"
+}
 Ensure-VcRuntime
 
 $script:MySqlExe = Join-Path $MySqlHome "bin\mysql.exe"
@@ -652,12 +684,16 @@ foreach ($mysqlTool in @($script:MySqlExe, $script:MySqlAdminExe, $script:MySqlD
 }
 
 Show-CommandVersion -Names @("git.exe", "git") -Arguments @("--version")
-Show-CommandVersion -Names @("go.exe", "go") -Arguments @("version")
-Show-CommandVersion -Names @("node.exe", "node") -Arguments @("-v")
-Show-CommandVersion -Names @("npm.cmd", "npm") -Arguments @("-v")
+if (-not $UsePrebuiltStatic) {
+  Show-CommandVersion -Names @("go.exe", "go") -Arguments @("version")
+  Show-CommandVersion -Names @("node.exe", "node") -Arguments @("-v")
+  Show-CommandVersion -Names @("npm.cmd", "npm") -Arguments @("-v")
+}
 Show-ExecutableVersion -Path $script:MySqlExe -Arguments @("--version") -AllowFailure
 
 Pull-ProjectIfPossible
+Ensure-PrebuiltStaticReady
+New-Item -ItemType Directory -Force -Path $DeployLogDir, $MySqlLogDir | Out-Null
 Initialize-MySqlDataIfNeeded
 $authMode = Start-PortableMySqlIfNeeded
 Ensure-MySqlRootPassword -AuthMode $authMode
@@ -672,5 +708,5 @@ Write-Host "  Username: admin"
 Write-Host "  Password: $AdminPassword"
 Write-Host ""
 Write-Host "Stop:"
-Write-Host "  cd $App"
+Write-Host "  cd $DeploymentRoot"
 Write-Host "  .\scripts\static-down.ps1"

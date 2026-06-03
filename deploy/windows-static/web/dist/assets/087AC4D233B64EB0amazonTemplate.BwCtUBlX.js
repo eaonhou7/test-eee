@@ -1,0 +1,4 @@
+/*! 
+ Build based on gin-vue-admin 
+ Time : 1780498415000 */
+import{s as a}from"./087AC4D233B64EB0index.BWg6RuSE.js";const n=e=>a({url:"/amazonTemplate/list",method:"post",data:e}),r=e=>a({url:"/amazonTemplate/find",method:"get",params:e}),l=e=>a({url:"/amazonTemplate/create",method:"post",data:e}),p=e=>a({url:"/amazonTemplate/update",method:"put",data:e}),s=e=>a({url:"/amazonTemplate/delete",method:"delete",data:e}),d=(e,o)=>{const t=new FormData;return t.append("templateId",String(e)),t.append("file",o),a({url:"/amazonTemplate/uploadWorkbook",method:"post",data:t,headers:{"Content-Type":"multipart/form-data"}})},u=e=>a({url:"/amazonTemplate/parseWorkbook",method:"get",params:e}),T=e=>a({url:"/amazonTemplate/downloadWorkbook",method:"get",params:e,responseType:"blob"}),z=e=>a({url:"/amazonTemplate/saveFieldRules",method:"post",data:e});export{s as a,p as b,l as c,T as d,r as f,n as g,u as p,z as s,d as u};

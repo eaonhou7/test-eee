@@ -1,0 +1,4 @@
+/*! 
+ Build based on gin-vue-admin 
+ Time : 1780498415000 */
+import{ag as n,o,M as u,R as t,c as g,J as _,ac as k,Q as l}from"./087AC4D233B64EB0vendor-image-tools.BkKmqM0E.js";const d="/assets/087AC4D233B64EB0banner.BnKmBxXj.jpg",f="/assets/087AC4D233B64EB0banner2.CEIAvdoV.jpg",C={__name:"banner",setup(h){const a=e=>{window.open(e,"_blank")},c=[{img:d,link:"https://plugin.gin-vue-admin.com/license"},{img:f,link:"https://plugin.gin-vue-admin.com"},{img:"https://qmplusimg.henrongyi.top/gvaDemo/k8s.jpg",link:"https://plugin.gin-vue-admin.com/#/layout/newPluginInfo?id=42"}];return(e,B)=>{const i=n("el-image"),r=n("el-carousel-item"),m=n("el-carousel");return o(),u(m,{class:"-mt-2"},{default:t(()=>[(o(),g(_,null,k(c,(s,p)=>l(r,{class:"cursor-pointer lg:h-40",key:p,onClick:b=>a(s.link)},{default:t(()=>[l(i,{class:"h-full w-full",src:s.img,fit:"fill"},null,8,["src"])]),_:2},1032,["onClick"])),64))]),_:1})}}};export{C as default};

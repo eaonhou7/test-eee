@@ -1,0 +1,4 @@
+/*! 
+ Build based on gin-vue-admin 
+ Time : 1780498415000 */
+import{o as e,c as r,J as a,ac as s,S as l,a0 as n}from"./087AC4D233B64EB0vendor-image-tools.BkKmqM0E.js";const o={class:"grid grid-cols-2 gap-2"},c=["href"],g={__name:"wiki",setup(u){const i=[{title:"Vue3",url:"https://v3.cn.vuejs.org/guide/introduction.html"},{title:"GIN 文档",url:"https://gin-gonic.com/"},{title:"GVA 文档",url:"https://www.gin-vue-admin.com/"},{title:"插件市场",url:"https://plugin.gin-vue-admin.com/"},{title:"github 仓库",url:"https://github.com/flipped-aurora/gin-vue-admin"}];return(d,h)=>(e(),r("div",o,[(e(),r(a,null,s(i,t=>l("a",{key:t.url,href:t.url,class:"text-sm text-black/70 dark:text-white/70 no-underline hover:text-[var(--el-color-primary)] dark:hover:text-white",target:"_blank"},n(t.title),9,c)),64))]))}};export{g as default};

@@ -4,6 +4,36 @@
 
 低内存机器优先使用 `scripts\static-up.ps1` 和 `scripts\static-down.ps1`：前端先构建成 `web\dist`，运行时只保留 Go 后端和 MySQL，不常驻 Vite/Node。需要前端热更新开发时，再使用 `scripts\dev-up.ps1` 和 `scripts\dev-down.ps1`。
 
+## 0. 一键安装与部署（推荐）
+
+推荐先在 Mac/Linux 开发机生成 Windows 静态部署产物并推送到 Git，再让 Windows 目标机只拉取产物运行。这样目标机不需要安装 Go/Node，也不会执行 `npm run build` 或 `go build`。
+
+在 Mac/Linux 开发机执行：
+
+```bash
+./scripts/publish-windows-static.sh --push
+```
+
+如果目标机器可以联网，可以把 `install-windows.ps1` 单独放到桌面运行。脚本会自动申请管理员权限，安装或复用 Git，把项目 clone 到安装根目录，检测 `deploy\windows-static` 预构建产物，再安装或复用 MySQL zip 版和 Microsoft Visual C++ Redistributable x64，最后调用低内存静态部署流程。
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\install-windows.ps1
+```
+
+常用参数：
+
+```powershell
+.\install-windows.ps1 -GitRepoUrl "https://github.com/eaonhou7/test-eee.git"
+.\install-windows.ps1 -MySqlRootPassword "你的 MySQL root 密码"
+.\install-windows.ps1 -SkipGitPull
+.\install-windows.ps1 -Offline
+.\install-windows.ps1 -ResetMySqlData
+.\install-windows.ps1 -BuildOnTarget
+```
+
+默认会 clone `https://github.com/eaonhou7/test-eee.git` 到 `C:\Users\Administrator\Desktop\eaon\system\test-eee-git`。如果存在完整的 `deploy\windows-static`，会自动复用预构建的 `web\dist` 和 `gva-server.exe`；只有传入 `-BuildOnTarget` 时才在 Windows 目标机安装 Go/Node 并现场构建。`-Offline` 模式不会使用 `winget`、联网下载或 `git clone`，需要提前把项目目录、`PortableGit`、`vc_redist.x64*.exe`、`mysql-8.0.*-winx64.zip` 或已解压的 `mysql-8.0.*-winx64` 放到安装根目录。
+
 ## 1. 环境准备
 
 ### 1.1 安装必需软件

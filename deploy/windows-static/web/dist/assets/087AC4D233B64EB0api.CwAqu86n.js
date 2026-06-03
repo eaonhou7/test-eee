@@ -1,0 +1,4 @@
+/*! 
+ Build based on gin-vue-admin 
+ Time : 1780498415000 */
+import{s as e}from"./087AC4D233B64EB0index.BWg6RuSE.js";const p=t=>e({url:"/api/getApiList",method:"post",data:t}),i=t=>e({url:"/api/createApi",method:"post",data:t}),o=t=>e({url:"/api/getApiById",method:"post",data:t}),a=t=>e({url:"/api/updateApi",method:"post",data:t}),n=t=>e({url:"/api/getAllApis",method:"post",data:t}),u=t=>e({url:"/api/deleteApi",method:"post",data:t}),l=t=>e({url:"/api/deleteApisByIds",method:"delete",data:t}),A=()=>e({url:"/api/freshCasbin",method:"get"}),d=()=>e({url:"/api/syncApi",method:"get"}),c=()=>e({url:"/api/getApiGroups",method:"get"}),g=t=>e({url:"/api/ignoreApi",method:"post",data:t}),h=t=>e({url:"/api/enterSyncApi",method:"post",data:t}),m=(t,s)=>e({url:"/api/getApiRoles",method:"get",params:{path:t,method:s}}),y=t=>e({url:"/api/setApiRoles",method:"post",data:t});export{c as a,o as b,m as c,l as d,u as e,A as f,p as g,i as h,g as i,h as j,y as k,n as l,d as s,a as u};
